@@ -1,0 +1,27 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: 'Potential Customer management API'
+            description: |
+                API RESTful para gestión de solicitudes de información, posibles clientes, ventas y seguimiento.
+                Documenta todos los servicios bajo `/api`.
+            version: '1.0.0'
+        servers:
+            - url: 'http://localhost:8080'
+              description: 'Servidor de desarrollo local'
+            # Agrega más servers si tienes ambientes de staging/prod:
+            # - url: 'https://api.midominio.com'
+            #   description: 'Producción'
+        contact:
+            name: 'Equipo PitahayaSoft'
+            email: 'soporte@pitahayasoft.com'
+            url: 'https://pitahayasoft.com'
+        license:
+            name: 'MIT'
+            url: 'https://opensource.org/licenses/MIT'
+    areas:
+        default:
+            path_patterns:
+                - ^/api(?!/doc$)
+    models:
+        use_jms: false

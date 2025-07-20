@@ -1,0 +1,10 @@
+request_information_controllers:
+    resource:
+        path: ../src/RequestInformation/Infrastructure/Controller/
+        namespace: App\RequestInformation\Infrastructure\Controller
+    type: attribute
+
+app.swagger_ui:
+    path: /api/doc
+    methods: GET
+    defaults: { _controller: nelmio_api_doc.controller.swagger_ui }
