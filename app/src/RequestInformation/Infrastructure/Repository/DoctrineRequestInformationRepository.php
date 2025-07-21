@@ -3,6 +3,7 @@ namespace App\RequestInformation\Infrastructure\Repository;
 
 use App\RequestInformation\Domain\Aggregate\RequestInformation;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
+use App\RequestInformation\Domain\ValueObject\RequestStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use App\RequestInformation\Infrastructure\Persistence\DoctrineRequestInformationEntity;
 use App\RequestInformation\Infrastructure\Persistence\RequestInformationMapper;
@@ -16,14 +17,6 @@ readonly class DoctrineRequestInformationRepository implements RequestInformatio
         $entity = RequestInformationMapper::toDoctrine($request);
         $this->em->persist($entity);
         $this->em->flush();
-    }
-
-    public function countAll(): int
-    {
-        $qb = $this->em->createQueryBuilder();
-        $qb->select('COUNT(r.id)')
-            ->from(DoctrineRequestInformationEntity::class, 'r');
-        return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
     /**
@@ -66,6 +59,38 @@ readonly class DoctrineRequestInformationRepository implements RequestInformatio
             ->setMaxResults($limit);
 
         return $qb->getQuery()->getResult();
+    }
+
+    public function getSummaryByDates(\DateTimeInterface $from = null, \DateTimeInterface $to = null): array
+    {
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('COUNT(r.id) as total')
+            ->addSelect('r.status')
+            ->from(DoctrineRequestInformationEntity::class, 'r');
+
+        if ($from) {
+            $qb->andWhere('r.createdAt >= :from')->setParameter('from', $from->format('Y-m-d 00:00:00'));
+        }
+        if ($to) {
+            $qb->andWhere('r.createdAt <= :to')->setParameter('to', $to->format('Y-m-d 23:59:59'));
+        }
+
+        $qb->groupBy('r.status');
+
+        $results = $qb->getQuery()->getArrayResult();
+
+        $allStates = array_map(fn($e) => strtolower($e->value), RequestStatus::cases());
+
+        // Procesa para retornar bien el resumen
+        $summary = [
+            'total' => 0,
+            ...array_fill_keys($allStates, 0)
+        ];
+        foreach ($results as $row) {
+            $summary[strtolower($row['status']->value)] = (int) $row['total'];
+            $summary['total'] += (int)$row['total'];
+        }
+        return $summary;
     }
 
 }

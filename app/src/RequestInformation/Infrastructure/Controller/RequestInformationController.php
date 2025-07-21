@@ -71,34 +71,56 @@ class RequestInformationController extends AbstractController
         return $this->json(['status' => 'ok']);
     }
 
-    /**
-     * @throws ExceptionInterface
-     */
-    #[Route('/api/v1/requests-information/total', name: 'count_request_information', methods: ['GET'])]
+    #[Route('/api/v1/requests-information/summary', name: 'requests_information_summary', methods: ['GET'])]
     #[OA\Get(
-        summary: "Obtener el total de peticiones de información",
+        summary: "Summary of requests by state in a date range",
         tags: ['RequestInformation'],
+        parameters: [
+            new OA\Parameter(
+                name: "from",
+                description: "Start date (YYYY-MM-DD)",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "string", format: "date")
+            ),
+            new OA\Parameter(
+                name: "to",
+                description: "End date (YYYY-MM-DD)",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "string", format: "date")
+            ),
+        ],
         responses: [
             new OA\Response(
                 response: 200,
-                description: "Total de peticiones",
+                description: "Total and status breakdown",
                 content: new OA\JsonContent(
                     properties: [
-                        new OA\Property(property: "total", type: "integer", example: 42)
+                        new OA\Property(property: "total", type: "integer"),
+                        new OA\Property(property: "byStatus", type: "object", additionalProperties: new OA\AdditionalProperties(type: "integer"))
                     ]
                 )
             )
         ]
     )]
-    public function count(
-        MessageBusInterface $queryBus
+    public function summary(
+        Request $request,
+        RequestInformationRepositoryInterface $repo
     ): JsonResponse {
-        $query = new CountRequestsQuery();
-        $envelope = $queryBus->dispatch($query);
-        $handledStamp = $envelope->last(HandledStamp::class);
+        $from = $request->query->get('from');
+        $to = $request->query->get('to');
 
-        return $this->json(['total' => $handledStamp->getResult()]);
+        $fromDate = $from ? \DateTimeImmutable::createFromFormat('Y-m-d', $from) : null;
+        $toDate = $to ? \DateTimeImmutable::createFromFormat('Y-m-d', $to) : null;
+
+        // Si solo recibe 'to', toma todo hasta esa fecha. Si solo 'from', todo desde esa fecha hasta ahora.
+        $summary = $repo->getSummaryByDates($fromDate, $toDate);
+
+        return $this->json($summary);
     }
+
+
 
     #[Route('/api/v1/requests-information', name: 'requests_information_list', methods: ['GET'])]
     #[OA\Get(
