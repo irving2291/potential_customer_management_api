@@ -13,6 +13,8 @@ services:
         '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestInformationRepository'
     App\PotentialCustomer\Domain\Repository\PotentialCustomerRepositoryInterface:
         '@App\PotentialCustomer\Infrastructure\Repository\DoctrinePotentialCustomerRepository'
+    App\RequestInformation\Domain\Repository\RequestNoteRepositoryInterface:
+        '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestNoteRepository'
 
 
     App\RequestInformation\Application\CommandHandler\:

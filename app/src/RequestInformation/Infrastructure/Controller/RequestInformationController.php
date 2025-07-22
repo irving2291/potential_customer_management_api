@@ -1,7 +1,16 @@
 <?php
 namespace App\RequestInformation\Infrastructure\Controller;
 
+use App\RequestInformation\Application\Command\AddRequestNoteCommand;
+use App\RequestInformation\Application\Command\ChangeRequestStatusCommand;
+use App\RequestInformation\Application\Command\DeleteRequestNoteCommand;
+use App\RequestInformation\Application\Command\UpdateRequestNoteCommand;
+use App\RequestInformation\Application\CommandHandler\AddRequestNoteHandler;
+use App\RequestInformation\Application\CommandHandler\ChangeRequestStatusHandler;
+use App\RequestInformation\Application\CommandHandler\DeleteRequestNoteHandler;
+use App\RequestInformation\Application\Query\GetRequestSummaryQuery;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
+use App\RequestInformation\Domain\Repository\RequestNoteRepositoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Messenger\Exception\ExceptionInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -11,8 +20,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
 use App\RequestInformation\Application\Command\CreateRequestInformationCommand;
-use App\RequestInformation\Application\Query\CountRequestsQuery;
-use App\RequestInformation\Application\QueryHandler\CountRequestsHandler;
 use OpenApi\Attributes as OA;
 
 class RequestInformationController extends AbstractController
@@ -71,6 +78,9 @@ class RequestInformationController extends AbstractController
         return $this->json(['status' => 'ok']);
     }
 
+    /**
+     * @throws ExceptionInterface
+     */
     #[Route('/api/v1/requests-information/summary', name: 'requests_information_summary', methods: ['GET'])]
     #[OA\Get(
         summary: "Summary of requests by state in a date range",
@@ -106,7 +116,7 @@ class RequestInformationController extends AbstractController
     )]
     public function summary(
         Request $request,
-        RequestInformationRepositoryInterface $repo
+        MessageBusInterface $queryBus
     ): JsonResponse {
         $from = $request->query->get('from');
         $to = $request->query->get('to');
@@ -114,10 +124,11 @@ class RequestInformationController extends AbstractController
         $fromDate = $from ? \DateTimeImmutable::createFromFormat('Y-m-d', $from) : null;
         $toDate = $to ? \DateTimeImmutable::createFromFormat('Y-m-d', $to) : null;
 
-        // Si solo recibe 'to', toma todo hasta esa fecha. Si solo 'from', todo desde esa fecha hasta ahora.
-        $summary = $repo->getSummaryByDates($fromDate, $toDate);
+        $query = new GetRequestSummaryQuery($fromDate, $toDate);
+        $envelope = $queryBus->dispatch($query);
+        $handledStamp = $envelope->last(HandledStamp::class);
 
-        return $this->json($summary);
+        return $this->json($handledStamp->getResult());
     }
 
 
@@ -211,6 +222,226 @@ class RequestInformationController extends AbstractController
             'limit' => $limit,
             'count' => count($data)
         ]);
+    }
+
+
+    /**
+     * @throws ExceptionInterface
+     */
+    #[Route('/api/v1/requests-information/{id}/status', name: 'change_request_status', methods: ['PATCH'])]
+    #[OA\Patch(
+        summary: "Change the status of a request information",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["status"],
+                properties: [
+                    new OA\Property(property: "status", type: "string", example: "won")
+                ]
+            )
+        ),
+        tags: ['RequestInformation'],
+        parameters: [
+            new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string")),
+        ],
+        responses: [ new OA\Response(response: 200, description: "Status changed") ]
+    )]
+    public function changeStatus(
+        string $id,
+        Request $request,
+        ChangeRequestStatusHandler $handler
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $status = $data['status'] ?? null;
+
+        if (!$status) {
+            return $this->json(['error' => true, 'message' => 'Status is required'], 400);
+        }
+
+        $command = new ChangeRequestStatusCommand($id, $status);
+        $handler->__invoke($command);
+
+        return $this->json(['success' => true]);
+    }
+
+    /**
+     * @throws ExceptionInterface
+     */
+    #[Route('/api/v1/requests-information/{id}/notes', name: 'add_request_note', methods: ['POST'])]
+    #[OA\Post(
+        summary: "Add a note to a request information",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["text", "createdBy"],
+                properties: [
+                    new OA\Property(property: "text", type: "string"),
+                    new OA\Property(property: "createdBy", type: "string")
+                ]
+            )
+        ),
+        tags: ['RequestNote'],
+        parameters: [
+            new OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string")),
+        ],
+        responses: [ new OA\Response(response: 200, description: "Note added") ]
+    )]
+    public function addNote(
+        string $id,
+        Request $request,
+        AddRequestNoteHandler $handler
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        if (empty($data['text']) || empty($data['createdBy'])) {
+            return $this->json(['error' => true, 'message' => 'Text or createdBy is required.'], 400);
+        }
+        $command = new AddRequestNoteCommand(
+            $id,
+            $data['text'],
+            $data['createdBy']
+        );
+        $handler->__invoke($command);
+
+        return $this->json(['success' => true]);
+    }
+
+    #[Route('/api/v1/requests-information/{id}/notes', name: 'list_request_notes', methods: ['GET'])]
+    #[OA\Get(
+        description: "Get all notes (not soft-deleted) for a given request information.",
+        summary: "List notes for a request information",
+        tags: ['RequestNote'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "The id of the RequestInformation entity",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "List of notes",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(
+                            property: "notes",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "id", type: "string"),
+                                    new OA\Property(property: "text", type: "string"),
+                                    new OA\Property(property: "createdBy", type: "string"),
+                                    new OA\Property(property: "createdAt", type: "string", format: "date-time"),
+                                    new OA\Property(property: "updatedAt", type: "string", format: "date-time", nullable: true)
+                                ]
+                            )
+                        )
+                    ]
+                )
+            )
+        ]
+    )]
+    public function listNotes(
+        string $id,
+        RequestNoteRepositoryInterface $repo
+    ): JsonResponse {
+        $notes = $repo->findByRequestInformationId($id);
+        // Solo notas no borradas
+        // $visible = array_filter($notes, fn($n) => $n->deletedAt === null);
+        $result = array_map(fn($n) => [
+            'id' => $n->id,
+            'text' => $n->text,
+            'createdBy' => $n->createdBy,
+            'createdAt' => $n->createdAt->format('Y-m-d H:i:s'),
+            'updatedAt' => $n->updatedAt?->format('Y-m-d H:i:s'),
+        ], $notes);
+        return $this->json(['notes' => $result]);
+    }
+
+    #[Route('/api/v1/requests-information/notes/{noteId}', name: 'update_request_note', methods: ['PATCH'])]
+    #[OA\Patch(
+        description: "Update the text and set updatedAt for a note.",
+        summary: "Update the content of a note",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["text"],
+                properties: [
+                    new OA\Property(property: "text", type: "string", example: "This is the updated note.")
+                ]
+            )
+        ),
+        tags: ['RequestNote'],
+        parameters: [
+            new OA\Parameter(
+                name: "noteId",
+                description: "The id of the note",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Note updated successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true)
+                    ]
+                )
+            )
+        ]
+    )]
+    public function updateNote(
+        string $noteId,
+        Request $request,
+        MessageBusInterface $commandBus
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $command = new UpdateRequestNoteCommand(
+            $noteId,
+            $data['text'] ?? ''
+        );
+        $commandBus->dispatch($command);
+        return $this->json(['success' => true]);
+    }
+
+    #[Route('/api/v1/requests-information/notes/{noteId}', name: 'delete_request_note', methods: ['DELETE'])]
+    #[OA\Delete(
+        description: "Mark a note as deleted (soft delete, sets deletedAt).",
+        summary: "Soft delete a note",
+        tags: ['RequestNote'],
+        parameters: [
+            new OA\Parameter(
+                name: "noteId",
+                description: "The id of the note",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Note deleted successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true)
+                    ]
+                )
+            )
+        ]
+    )]
+    public function deleteNote(
+        string $noteId,
+        DeleteRequestNoteHandler $handler
+    ): JsonResponse {
+        $command = new DeleteRequestNoteCommand($noteId);
+        $handler->__invoke($command);
+        return $this->json(['success' => true]);
     }
 
 }

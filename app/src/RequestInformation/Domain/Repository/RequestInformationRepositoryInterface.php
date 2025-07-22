@@ -6,6 +6,8 @@ use App\RequestInformation\Domain\Aggregate\RequestInformation;
 
 interface RequestInformationRepositoryInterface
 {
+    public function findById(string $id): ?RequestInformation;
+
     public function save(RequestInformation $request): void;
 
     public function existsByEmailProgramAndLeadInThreeMonth(string $email, string $programId, string $leadId): bool;

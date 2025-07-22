@@ -18,6 +18,8 @@ class RequestInformation
     private Phone $phone;
     private string $city;
 
+    private \DateTimeImmutable $updatedAt;
+
     public function __construct(
         ?string $id,
         string $programInterestId,
@@ -83,6 +85,11 @@ class RequestInformation
         return $this->city;
     }
 
+    public function getUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->updatedAt ?? null;
+    }
+
     // --- SETTERS (opcionales, usa con precaución en DDD) ---
 
     public function setStatus(RequestStatus $status): void { $this->status = $status; }
@@ -126,6 +133,12 @@ class RequestInformation
     public function setCity(string $city): self
     {
         $this->city = $city;
+        return $this;
+    }
+
+    public function setUpdatedAt(\DateTimeImmutable $updatedAt): self
+    {
+        $this->updatedAt = $updatedAt;
         return $this;
     }
 }

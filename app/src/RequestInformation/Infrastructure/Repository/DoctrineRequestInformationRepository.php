@@ -7,8 +7,9 @@ use App\RequestInformation\Domain\ValueObject\RequestStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use App\RequestInformation\Infrastructure\Persistence\DoctrineRequestInformationEntity;
 use App\RequestInformation\Infrastructure\Persistence\RequestInformationMapper;
+use Doctrine\ORM\EntityNotFoundException;
 
-readonly class DoctrineRequestInformationRepository implements RequestInformationRepositoryInterface
+class DoctrineRequestInformationRepository implements RequestInformationRepositoryInterface
 {
     public function __construct(private EntityManagerInterface $em) {}
 
@@ -93,4 +94,14 @@ readonly class DoctrineRequestInformationRepository implements RequestInformatio
         return $summary;
     }
 
+    public function findById(string $id): ?RequestInformation
+    {
+
+        /*$qb = $this->em->createQueryBuilder();
+        $qb->select('r')
+            ->from(DoctrineRequestInformationEntity::class, 'r')
+            ->where('r.id = :id')
+            ->setParameter('id', $id);
+        return $qb->getQuery()->getOneOrNullResult();*/
+    }
 }
