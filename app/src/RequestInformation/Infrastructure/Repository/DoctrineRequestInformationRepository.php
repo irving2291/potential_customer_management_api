@@ -96,12 +96,11 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
 
     public function findById(string $id): ?RequestInformation
     {
-
-        /*$qb = $this->em->createQueryBuilder();
-        $qb->select('r')
-            ->from(DoctrineRequestInformationEntity::class, 'r')
-            ->where('r.id = :id')
-            ->setParameter('id', $id);
-        return $qb->getQuery()->getOneOrNullResult();*/
+        $repo = $this->em->getRepository(DoctrineRequestInformationEntity::class);
+        $entity = $repo->find($id);
+        if (!$entity) {
+            throw new EntityNotFoundException();
+        }
+        return RequestInformationMapper::toDomain($entity);
     }
 }
