@@ -4,6 +4,7 @@ namespace App\RequestInformation\Infrastructure\Repository;
 use App\RequestInformation\Domain\Aggregate\RequestInformation;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
 use App\RequestInformation\Domain\ValueObject\RequestStatus;
+use App\RequestInformation\Infrastructure\Persistence\DoctrineRequestInformationStatusEntity;
 use Doctrine\ORM\EntityManagerInterface;
 use App\RequestInformation\Infrastructure\Persistence\DoctrineRequestInformationEntity;
 use App\RequestInformation\Infrastructure\Persistence\RequestInformationMapper;
@@ -13,11 +14,27 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
 {
     public function __construct(private EntityManagerInterface $em) {}
 
-    public function save(RequestInformation $request): void
+    public function save(RequestInformation $request): RequestInformation
     {
-        $entity = RequestInformationMapper::toDoctrine($request);
+        $statusCode = $request->getStatus()->getCode();
+
+        $statusEntity = $this->em->getRepository(DoctrineRequestInformationStatusEntity::class)
+            ->findOneBy(['code' => $statusCode, 'organizationId' => $request->getOrganizationId()]);
+
+        if (!$statusEntity) {
+            throw new \RuntimeException("Status entity not found");
+        }
+        $entity = null;
+        if ($request->getId()) {
+            $entity = $this->em->getRepository(DoctrineRequestInformationEntity::class)
+                ->find($request->getId());
+        }
+
+
+        $entity = RequestInformationMapper::toDoctrine($request, $statusEntity, $entity);
         $this->em->persist($entity);
         $this->em->flush();
+        return RequestInformationMapper::toDomain($entity);
     }
 
     /**
@@ -53,7 +70,8 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
         $qb = $this->em->createQueryBuilder();
         $qb->select('r')
             ->from(DoctrineRequestInformationEntity::class, 'r')
-            ->where('r.status = :status')
+            ->innerJoin('r.status', 's')
+            ->where('s.code = :status')
             ->setParameter('status', $status)
             ->orderBy('r.createdAt', 'DESC')
             ->setFirstResult(($page - 1) * $limit)
@@ -66,8 +84,9 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
     {
         $qb = $this->em->createQueryBuilder();
         $qb->select('COUNT(r.id) as total')
-            ->addSelect('r.status')
-            ->from(DoctrineRequestInformationEntity::class, 'r');
+            ->addSelect('LOWER(s.code) as code')
+            ->from(DoctrineRequestInformationEntity::class, 'r')
+            ->join('r.status', 's');
 
         if ($from) {
             $qb->andWhere('r.createdAt >= :from')->setParameter('from', $from->format('Y-m-d 00:00:00'));
@@ -76,19 +95,25 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
             $qb->andWhere('r.createdAt <= :to')->setParameter('to', $to->format('Y-m-d 23:59:59'));
         }
 
-        $qb->groupBy('r.status');
+        $qb->groupBy('s.code');
 
         $results = $qb->getQuery()->getArrayResult();
 
-        $allStates = array_map(fn($e) => strtolower($e->value), RequestStatus::cases());
+        // Obtener todos los codes posibles de status (desde la base)
+        $allStates = $this->em->getRepository(DoctrineRequestInformationStatusEntity::class)
+            ->createQueryBuilder('s')
+            ->select('LOWER(s.code) as code')
+            ->getQuery()
+            ->getArrayResult();
+        $allStates = array_column($allStates, 'code');
 
-        // Procesa para retornar bien el resumen
         $summary = [
             'total' => 0,
             ...array_fill_keys($allStates, 0)
         ];
+
         foreach ($results as $row) {
-            $summary[strtolower($row['status']->value)] = (int) $row['total'];
+            $summary[$row['code']] = (int) $row['total'];
             $summary['total'] += (int)$row['total'];
         }
         return $summary;

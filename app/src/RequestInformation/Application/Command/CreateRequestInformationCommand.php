@@ -5,6 +5,7 @@ class CreateRequestInformationCommand
 {
     public string $programInterest;
     public string $leadOrigin;
+    public string $organization;
     public string $firstName;
     public string $lastName;
     public string $email;
@@ -14,6 +15,7 @@ class CreateRequestInformationCommand
     public function __construct(
         string $programInterest,
         string $leadOrigin,
+        string $organization,
         string $firstName,
         string $lastName,
         string $email,
@@ -28,5 +30,6 @@ class CreateRequestInformationCommand
         $this->city = $city;
         $this->programInterest = $programInterest;
         $this->leadOrigin = $leadOrigin;
+        $this->organization = $organization;
     }
 }

@@ -30,6 +30,12 @@ doctrine:
                 dir: '%kernel.project_dir%/src/PotentialCustomer/Infrastructure/Persistence'
                 prefix: 'App\PotentialCustomer\Infrastructure\Persistence'
                 alias: PotentialCustomerPersistence
+            Quotation:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/Quotation/Infrastructure/Persistence'
+                prefix: 'App\Quotation\Infrastructure\Persistence'
+                alias: QuotationPersistence
         controller_resolver:
             auto_mapping: false
 

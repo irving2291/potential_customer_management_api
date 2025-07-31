@@ -3,6 +3,16 @@ request_information_controllers:
         path: ../src/RequestInformation/Infrastructure/Controller/
         namespace: App\RequestInformation\Infrastructure\Controller
     type: attribute
+quotation_controllers:
+    resource:
+        path: ../src/Quotation/Infrastructure/Controller/
+        namespace: App\Quotation\Infrastructure\Controller
+    type: attribute
+common_controllers:
+    resource:
+        path: ../src/Common/Infrastructure/Controller/
+        namespace: App\Common\Infrastructure\Controller
+    type: attribute
 
 app.swagger_ui:
     path: /api/doc

@@ -15,6 +15,10 @@ services:
         '@App\PotentialCustomer\Infrastructure\Repository\DoctrinePotentialCustomerRepository'
     App\RequestInformation\Domain\Repository\RequestNoteRepositoryInterface:
         '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestNoteRepository'
+    App\Quotation\Domain\Repository\QuotationRepositoryInterface:
+        '@App\Quotation\Infrastructure\Repository\DoctrineQuotationRepository'
+    App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface:
+        '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestInformationStatusRepository'
 
 
     App\RequestInformation\Application\CommandHandler\:

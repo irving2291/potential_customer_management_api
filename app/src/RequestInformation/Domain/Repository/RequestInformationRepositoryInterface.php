@@ -8,7 +8,7 @@ interface RequestInformationRepositoryInterface
 {
     public function findById(string $id): ?RequestInformation;
 
-    public function save(RequestInformation $request): void;
+    public function save(RequestInformation $request): RequestInformation;
 
     public function existsByEmailProgramAndLeadInThreeMonth(string $email, string $programId, string $leadId): bool;
 

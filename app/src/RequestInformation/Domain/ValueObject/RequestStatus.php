@@ -4,9 +4,11 @@ namespace App\RequestInformation\Domain\ValueObject;
 
 enum RequestStatus: string
 {
-    case NEW = 'NEW';
-    case IN_PROGRESS = 'IN_PROGRESS';
-    case RECONTACT = 'RECONTACT';
-    case WON = 'WON';
-    case LOST = 'LOST';
+    case NEW = 'new';
+    case IN_PROGRESS = 'in_progress';
+    case RECONTACT = 'recontact';
+    case WON = 'won';
+    case LOST = 'lost';
+
+    case CLOSE = 'close';
 }

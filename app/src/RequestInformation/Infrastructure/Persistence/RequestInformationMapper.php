@@ -3,20 +3,27 @@
 namespace App\RequestInformation\Infrastructure\Persistence;
 
 use App\RequestInformation\Domain\Aggregate\RequestInformation;
+use App\RequestInformation\Domain\Entity\RequestInformationStatus;
 use App\RequestInformation\Domain\ValueObject\Email;
 use App\RequestInformation\Domain\ValueObject\Phone;
-use Ramsey\Uuid\Uuid;
 
 class RequestInformationMapper
 {
-    public static function toDoctrine(RequestInformation $domain): DoctrineRequestInformationEntity
+    public static function toDoctrine(
+        RequestInformation $domain,
+        DoctrineRequestInformationStatusEntity $statusEntity,
+        ?DoctrineRequestInformationEntity $entity = null
+    ): DoctrineRequestInformationEntity
     {
-        $entity = new DoctrineRequestInformationEntity();
+        if (!$entity) {
+            $entity = new DoctrineRequestInformationEntity();
+        }
         $entity->setProgramInterestId($domain->getProgramInterestId())
+            ->setOrganizationId($domain->getOrganizationId())
             ->setLeadOriginId($domain->getLeadOriginId())
             ->setFirstName($domain->getFirstName())
             ->setLastName($domain->getLastName())
-            ->setStatus($domain->getStatus())
+            ->setStatus($statusEntity)
             ->setEmail((string)$domain->getEmail())
             ->setPhone((string)$domain->getPhone())
             ->setCity($domain->getCity());
@@ -25,11 +32,19 @@ class RequestInformationMapper
 
     public static function toDomain(DoctrineRequestInformationEntity $entity): RequestInformation
     {
+        $statusEntity = $entity->getStatus();
+
         return new RequestInformation(
             $entity->getId(),
             $entity->getProgramInterestId(),
             $entity->getLeadOriginId(),
-            $entity->getStatus(),
+            $entity->getOrganizationId(),
+            new RequestInformationStatus(
+                $statusEntity->getId(),
+                $statusEntity->getCode(),
+                $statusEntity->getName(),
+                $statusEntity->isDefault()
+            ),
             $entity->getFirstName(),
             $entity->getLastName(),
             new Email($entity->getEmail()),

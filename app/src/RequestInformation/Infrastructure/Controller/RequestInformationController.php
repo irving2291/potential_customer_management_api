@@ -62,11 +62,24 @@ class RequestInformationController extends AbstractController
         Request $request,
         MessageBusInterface $commandBus
     ): JsonResponse {
+        $organizationId = $request->headers->get('organization');
+        if (!$organizationId) {
+            return $this->json(['error' => true, 'message' => 'No data organization', 'debug_content' => $request->headers->get('organization')], 400);
+        }
+
         $data = json_decode($request->getContent(), true);
+
+        if (!$data) {
+            return $this->json(['error' => true, 'message' => 'No data received', 'debug_content' => $request->getContent()], 400);
+        }
+        if (!isset($data['programInterest'])) {
+            return $this->json(['error' => true, 'message' => 'Missing field: programInterest', 'received' => $data], 400);
+        }
 
         $command = new CreateRequestInformationCommand(
             $data['programInterest'],
             $data['leadOrigin'],
+            $organizationId,
             $data['firstName'],
             $data['lastName'],
             $data['email'],
@@ -225,18 +238,15 @@ class RequestInformationController extends AbstractController
     }
 
 
-    /**
-     * @throws ExceptionInterface
-     */
     #[Route('/api/v1/requests-information/{id}/status', name: 'change_request_status', methods: ['PATCH'])]
     #[OA\Patch(
         summary: "Change the status of a request information",
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ["status"],
+                required: ["status_code"],
                 properties: [
-                    new OA\Property(property: "status", type: "string", example: "won")
+                    new OA\Property(property: "status_code", type: "string", example: "won")
                 ]
             )
         ),
@@ -252,13 +262,13 @@ class RequestInformationController extends AbstractController
         ChangeRequestStatusHandler $handler
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
-        $status = $data['status'] ?? null;
+        $statusCode = $data['status_code'] ?? null;
 
-        if (!$status) {
-            return $this->json(['error' => true, 'message' => 'Status is required'], 400);
+        if (!$statusCode) {
+            return $this->json(['error' => true, 'message' => 'status_code is required'], 400);
         }
 
-        $command = new ChangeRequestStatusCommand($id, $status);
+        $command = new ChangeRequestStatusCommand($id, $statusCode);
         $handler->__invoke($command);
 
         return $this->json(['success' => true]);

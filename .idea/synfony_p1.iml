@@ -135,6 +135,14 @@
       <excludeFolder url="file://$MODULE_DIR$/app/vendor/symfony/twig-bundle" />
       <excludeFolder url="file://$MODULE_DIR$/app/vendor/twig/twig" />
       <excludeFolder url="file://$MODULE_DIR$/app/vendor/zircote/swagger-php" />
+      <excludeFolder url="file://$MODULE_DIR$/app/vendor/behat/behat" />
+      <excludeFolder url="file://$MODULE_DIR$/app/vendor/behat/gherkin" />
+      <excludeFolder url="file://$MODULE_DIR$/app/vendor/behat/mink" />
+      <excludeFolder url="file://$MODULE_DIR$/app/vendor/behat/mink-browserkit-driver" />
+      <excludeFolder url="file://$MODULE_DIR$/app/vendor/friends-of-behat/symfony-extension" />
+      <excludeFolder url="file://$MODULE_DIR$/app/vendor/symfony/translation" />
+      <excludeFolder url="file://$MODULE_DIR$/app/vendor/doctrine/data-fixtures" />
+      <excludeFolder url="file://$MODULE_DIR$/app/vendor/doctrine/doctrine-fixtures-bundle" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

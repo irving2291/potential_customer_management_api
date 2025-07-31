@@ -3,10 +3,12 @@
 namespace App\RequestInformation\Infrastructure\Persistence;
 
 use Doctrine\ORM\Mapping as ORM;
-use App\RequestInformation\Domain\ValueObject\RequestStatus;
 
 #[ORM\Entity]
 #[ORM\Table(name: "request_information")]
+#[ORM\Index(name: "idx_program_interest_id", columns: ["program_interest_id"])]
+#[ORM\Index(name: "idx_lead_origin_id", columns: ["lead_origin_id"])]
+#[ORM\Index(name: "idx_organization_id", columns: ["organization_id"])]
 class DoctrineRequestInformationEntity
 {
     public function __construct()
@@ -21,13 +23,17 @@ class DoctrineRequestInformationEntity
     private string $id;
 
     #[ORM\Column(type: "string", length: 36)]
+    private ?string $organizationId = null;
+
+    #[ORM\Column(type: "string", length: 36)]
     private ?string $programInterestId = null;
 
     #[ORM\Column(type: "string", length: 36)]
     private ?string $leadOriginId = null;
 
-    #[ORM\Column(enumType: RequestStatus::class)]
-    private RequestStatus $status = RequestStatus::NEW;
+    #[ORM\ManyToOne(targetEntity: DoctrineRequestInformationStatusEntity::class)]
+    #[ORM\JoinColumn(name: "status_id", referencedColumnName: "id", nullable: false)]
+    private DoctrineRequestInformationStatusEntity $status;
 
     #[ORM\Column(type: "string", length: 80)]
     private string $firstName;
@@ -58,7 +64,7 @@ class DoctrineRequestInformationEntity
 
     // --- GETTERS ---
 
-    public function getStatus(): RequestStatus
+    public function getStatus(): DoctrineRequestInformationStatusEntity
     {
         return $this->status;
     }
@@ -66,6 +72,11 @@ class DoctrineRequestInformationEntity
     public function getId(): string
     {
         return $this->id;
+    }
+
+    public function getOrganizationId(): ?string
+    {
+        return $this->organizationId;
     }
 
     public function getProgramInterestId(): ?string
@@ -104,7 +115,12 @@ class DoctrineRequestInformationEntity
     }
 
     // --- SETTERS ---
-    public function setStatus(RequestStatus $status): self
+    public function setId(string $id): self
+    {
+        $this->id = $id;
+        return $this;
+    }
+    public function setStatus(DoctrineRequestInformationStatusEntity $status): self
     {
         $this->status = $status;
         return $this;
@@ -113,6 +129,12 @@ class DoctrineRequestInformationEntity
     public function setProgramInterestId(string $programInterestId): self
     {
         $this->programInterestId = $programInterestId;
+        return $this;
+    }
+
+    public function setOrganizationId(string $organizationId): self
+    {
+        $this->organizationId = $organizationId;
         return $this;
     }
 

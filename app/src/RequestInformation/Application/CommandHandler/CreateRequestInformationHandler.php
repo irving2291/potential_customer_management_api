@@ -7,6 +7,7 @@ use App\PotentialCustomer\Domain\Repository\PotentialCustomerRepositoryInterface
 use App\RequestInformation\Domain\Aggregate\RequestInformation;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
 use App\RequestInformation\Application\Command\CreateRequestInformationCommand;
+use App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface;
 use App\RequestInformation\Domain\ValueObject\Email as EmailValueObject;
 use App\RequestInformation\Domain\ValueObject\Phone;
 use JetBrains\PhpStorm\NoReturn;
@@ -18,7 +19,8 @@ class CreateRequestInformationHandler
 {
     public function __construct(
         private PotentialCustomerRepositoryInterface  $customerRepo,
-        private RequestInformationRepositoryInterface $requestInfoRepo
+        private RequestInformationRepositoryInterface $requestInfoRepo,
+        private RequestInformationStatusRepositoryInterface $statusRepo
     ) {}
 
     #[NoReturn] public function __invoke(CreateRequestInformationCommand $command): void
@@ -51,11 +53,17 @@ class CreateRequestInformationHandler
                 throw new \DomainException('Ya existe una petición para este programa, lead y persona.');
             }
 
+            $defaultStatus = $this->statusRepo->findDefault();
+            if (!$defaultStatus) {
+                throw new \DomainException('No existe un estado por defecto configurado.');
+            }
+
             $request = new RequestInformation(
-                uniqid('', true),
+                uuid_create(UUID_TYPE_RANDOM),
                 $command->programInterest,
                 $command->leadOrigin,
-                null,
+                $command->organization,
+                $defaultStatus,
                 $command->firstName,
                 $command->lastName,
                 new EmailValueObject($command->email),

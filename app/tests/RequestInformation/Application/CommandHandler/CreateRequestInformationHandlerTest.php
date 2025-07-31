@@ -1,57 +1,114 @@
 <?php
+namespace App\Tests\RequestInformation\Application\CommandHandler;
 
+use App\RequestInformation\Domain\Entity\RequestInformationStatus;
+use App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface;
+use JetBrains\PhpStorm\NoReturn;
+use PHPUnit\Framework\MockObject\Exception;
 use PHPUnit\Framework\TestCase;
 use App\RequestInformation\Application\CommandHandler\CreateRequestInformationHandler;
 use App\RequestInformation\Application\Command\CreateRequestInformationCommand;
-use App\PotentialCustomer\Domain\Repository\PotentialCustomerRepositoryInterface;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
+use App\PotentialCustomer\Domain\Repository\PotentialCustomerRepositoryInterface;
+use App\RequestInformation\Domain\ValueObject\Email as EmailVO;
+use App\RequestInformation\Domain\ValueObject\Phone;
 use App\PotentialCustomer\Domain\Aggregate\PotentialCustomer;
-
-class InMemoryPotentialCustomerRepository implements PotentialCustomerRepositoryInterface {
-    public array $customers = [];
-    public function findOneByEmail(string $email): ?PotentialCustomer
-    {
-        return $this->customers[$email] ?? null;
-    }
-    public function save($request): void { $this->customers[] = $request; }
-}
-
-class InMemoryRequestInformationRepository implements RequestInformationRepositoryInterface {
-    public $requests = [];
-    public function save($request): void { $this->requests[] = $request; }
-
-    public function countAll(): int
-    {
-        return count($this->requests);
-    }
-
-    public function existsByEmailProgramAndLeadInThreeMonth(string $email, string $programId, string $leadId): bool
-    {
-        return isset($this->requests[$email][$programId][$leadId]);
-    }
-}
 
 class CreateRequestInformationHandlerTest extends TestCase
 {
-    public function test_handler_creates_new_potential_customer_if_not_exists()
+    /**
+     * @throws Exception
+     */
+    #[NoReturn] public function testCreateRequestInformationSuccess(): void
     {
-        $customerRepo = new InMemoryPotentialCustomerRepository();
-        $requestRepo = new InMemoryRequestInformationRepository();
-        $handler = new CreateRequestInformationHandler($customerRepo, $requestRepo);
+        $mockCustomerRepo = $this->createMock(PotentialCustomerRepositoryInterface::class);
+        $mockRequestRepo = $this->createMock(RequestInformationRepositoryInterface::class);
+        $mockStatusRepo = $this->createMock(RequestInformationStatusRepositoryInterface::class);
+
+        // El potencial cliente no existe aún
+        $mockCustomerRepo->expects($this->once())
+            ->method('findOneByEmail')
+            ->with('irving@correo.com')
+            ->willReturn(null);
+
+        // El request information tampoco debe existir con esa combinación
+        $mockRequestRepo->expects($this->once())
+            ->method('existsByEmailProgramAndLeadInThreeMonth')
+            ->with('irving@correo.com', 'product-uuid', 'lead-uuid')
+            ->willReturn(false);
+
+        $mockStatusRepo->expects($this->once())
+            ->method('findDefault')
+            ->willReturn(new RequestInformationStatus(
+                'test-id', 'test-code', 'test-name', true
+            ));
+
+        // Esperamos que save se llame en ambos repos
+        $mockCustomerRepo->expects($this->once())
+            ->method('save')
+            ->with($this->isInstanceOf(PotentialCustomer::class));
+        $mockRequestRepo->expects($this->once())
+            ->method('save')
+            ->with($this->callback(function($ri) {
+                return $ri->getEmail() instanceof EmailVO
+                    && $ri->getPhone() instanceof Phone;
+            }));
+
+        $handler = new CreateRequestInformationHandler($mockCustomerRepo, $mockRequestRepo, $mockStatusRepo);
 
         $command = new CreateRequestInformationCommand(
-            'prod-uid',
-            'lead-uid',
+            'product-uuid',
+            'lead-uuid',
+            'a851bb2c-6748-4f4f-a3f9-243889b2d834',
             'Irving',
             'Jacome',
-            'test@email.com',
-            '1234567',
+            'irving@correo.com',
+            '0999123456',
             'Quito'
         );
 
         $handler->__invoke($command);
+        $this->assertTrue(true); // Llegó al final sin excepción
+    }
 
-        $this->assertCount(1, $customerRepo->customers);
-        $this->assertCount(1, $requestRepo->requests);
+    /**
+     * @throws Exception
+     */
+    #[NoReturn] public function testThrowsOnDuplicateRequest(): void
+    {
+        $mockCustomerRepo = $this->createMock(PotentialCustomerRepositoryInterface::class);
+        $mockRequestRepo = $this->createMock(RequestInformationRepositoryInterface::class);
+        $mockStatusRepo = $this->createMock(RequestInformationStatusRepositoryInterface::class);
+
+        $mockCustomerRepo->method('findOneByEmail')->willReturn(null);
+        $mockRequestRepo->method('existsByEmailProgramAndLeadInThreeMonth')->willReturn(true);
+        $mockStatusRepo->method('findDefault')->willReturn(
+            new RequestInformationStatus('test-id', 'test-code', 'test-name', true)
+        );
+
+        $handler = new CreateRequestInformationHandler($mockCustomerRepo, $mockRequestRepo, $mockStatusRepo);
+
+        $command = new CreateRequestInformationCommand(
+            'product-uuid',
+            'lead-uuid',
+            'a851bb2c-6748-4f4f-a3f9-243889b2d834',
+            'Irving',
+            'Jacome',
+            'irving@correo.com',
+            '0999123456',
+            'Quito'
+        );
+
+        try {
+            $handler->__invoke($command);
+            $this->fail('Expected exception not thrown');
+        } catch (\Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException $ex) {
+            // Puedes también verificar que el mensaje es el esperado:
+            $this->assertInstanceOf(\DomainException::class, $ex->getPrevious());
+            $this->assertEquals('Ya existe una petición para este programa, lead y persona.', $ex->getPrevious()->getMessage());
+        } catch (\DomainException $ex) {
+            // Si NO usas Messenger, caerá aquí directamente
+            $this->assertEquals('Ya existe una petición para este programa, lead y persona.', $ex->getMessage());
+        }
     }
 }

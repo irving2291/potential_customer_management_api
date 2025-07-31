@@ -2,16 +2,17 @@
 
 namespace App\RequestInformation\Domain\Aggregate;
 
+use App\RequestInformation\Domain\Entity\RequestInformationStatus;
 use App\RequestInformation\Domain\ValueObject\Email;
 use App\RequestInformation\Domain\ValueObject\Phone;
-use App\RequestInformation\Domain\ValueObject\RequestStatus;
 
 class RequestInformation
 {
     private ?string $id;
     private string $programInterestId; // Product UID
     private string $leadOriginId;      // LeadOrigin UID
-    private RequestStatus $status;
+    private string $organizationId;      // LeadOrigin UID
+    private RequestInformationStatus $status;
     private string $firstName;
     private string $lastName;
     private Email $email;
@@ -24,7 +25,8 @@ class RequestInformation
         ?string $id,
         string $programInterestId,
         string $leadOriginId,
-        ?RequestStatus $status,
+        string $organizationId,
+        RequestInformationStatus $status,
         string $firstName,
         string $lastName,
         Email $email,
@@ -34,7 +36,8 @@ class RequestInformation
         $this->id = $id;
         $this->programInterestId = $programInterestId;
         $this->leadOriginId = $leadOriginId;
-        $this->status = $status ?? RequestStatus::NEW;
+        $this->organizationId = $organizationId;
+        $this->status = $status;
         $this->firstName = $firstName;
         $this->lastName = $lastName;
         $this->email = $email;
@@ -43,7 +46,7 @@ class RequestInformation
     }
 
     // --- GETTERS ---
-    public function getStatus(): RequestStatus { return $this->status; }
+    public function getStatus(): RequestInformationStatus { return $this->status; }
 
     public function getId(): string
     {
@@ -58,6 +61,11 @@ class RequestInformation
     public function getLeadOriginId(): string
     {
         return $this->leadOriginId;
+    }
+
+    public function getOrganizationId(): string
+    {
+        return $this->organizationId;
     }
 
     public function getFirstName(): string
@@ -92,7 +100,7 @@ class RequestInformation
 
     // --- SETTERS (opcionales, usa con precaución en DDD) ---
 
-    public function setStatus(RequestStatus $status): void { $this->status = $status; }
+    public function setStatus(RequestInformationStatus $status): void { $this->status = $status; }
 
     public function setProgramInterestId(string $programInterestId): self
     {
@@ -103,6 +111,12 @@ class RequestInformation
     public function setLeadOriginId(string $leadOriginId): self
     {
         $this->leadOriginId = $leadOriginId;
+        return $this;
+    }
+
+    public function setOrganizationId(string $organizationId): self
+    {
+        $this->organizationId = $organizationId;
         return $this;
     }
 
