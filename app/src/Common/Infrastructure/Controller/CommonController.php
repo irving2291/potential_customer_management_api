@@ -13,4 +13,11 @@ class CommonController extends AbstractController
     {
         return $this->json(['success' => true], 200);
     }
+
+    #[Route('/internal/run-migrations', name: 'run_migrations')]
+    public function runMigrations(): JsonResponse
+    {
+        $output = shell_exec('php bin/console doctrine:migrations:migrate --no-interaction');
+        return $this->json(['success' => true, 'output' => $output], 200);
+    }
 }

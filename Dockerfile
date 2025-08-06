@@ -39,8 +39,8 @@ ENV SYMFONY_SKIP_AUTO_RUN=1
 
 # Instala Composer sin dev y sin auto-scripts
 RUN composer install --no-dev --optimize-autoloader --no-interaction \
-    && php bin/console cache:clear --no-warmup \
-    && php bin/console cache:warmup \
+    && php bin/console cache:clear --env=prod --no-warmup \
+    && php bin/console cache:warmup --env=prod \
     && chown -R www-data:www-data /var/www/html
 
 # Configuración nginx y supervisor
