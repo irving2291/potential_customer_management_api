@@ -1,4 +1,4 @@
-name: Deploy Lumen Auth to AWS
+name: Deploy symfony crm to AWS
 
 on:
   push:
