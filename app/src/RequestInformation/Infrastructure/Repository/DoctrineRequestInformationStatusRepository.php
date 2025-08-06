@@ -11,6 +11,13 @@ class DoctrineRequestInformationStatusRepository implements RequestInformationSt
 {
     public function __construct(private EntityManagerInterface $em) {}
 
+    public function findByOrganizationId(string $organizationId): array
+    {
+        $entity = $this->em->getRepository(DoctrineRequestInformationStatusEntity::class)
+            ->findBy(['organizationId' => $organizationId]);
+        return $entity;
+    }
+
     public function findByCode(string $code): ?RequestInformationStatus
     {
         $entity = $this->em
@@ -35,7 +42,8 @@ class DoctrineRequestInformationStatusRepository implements RequestInformationSt
             $entity->getId(),
             $entity->getCode(),
             $entity->getName(),
-            $entity->isDefault()
+            $entity->isDefault(),
+            $entity->getOrganization()
         );
     }
 
@@ -48,4 +56,22 @@ class DoctrineRequestInformationStatusRepository implements RequestInformationSt
         return $entity ? $this->mapToDomain($entity) : null;
     }
 
+    public function save(RequestInformationStatus $request): RequestInformationStatus
+    {
+        $entity = null;
+        if ($request->getId()) {
+            $entity = $this->em->getRepository(DoctrineRequestInformationStatusEntity::class)
+                ->find($request->getId());
+        } else {
+            $entity = new DoctrineRequestInformationStatusEntity(
+                $request->getCode(),
+                $request->getName(),
+                $request->getIsDefault(),
+                $request->getOrganizationId()
+            );
+        }
+        $this->em->persist($entity);
+        $this->em->flush();
+        return $entity;
+    }
 }

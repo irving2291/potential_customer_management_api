@@ -7,8 +7,8 @@
         "php": ">=8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "api-platform/doctrine-orm": "^4.1.19",
-        "api-platform/symfony": "^4.1.19",
+        "api-platform/doctrine-orm": "^4.1.20",
+        "api-platform/symfony": "^4.1.20",
         "doctrine/annotations": "^2.0.2",
         "doctrine/dbal": "^3.10",
         "doctrine/doctrine-bundle": "^2.15",
@@ -89,11 +89,9 @@
         }
     },
     "require-dev": {
-        "behat/behat": "^3.23",
-        "behat/mink-browserkit-driver": "^2.2",
         "doctrine/doctrine-fixtures-bundle": "^4.1",
-        "friends-of-behat/symfony-extension": "^2.6",
-        "phpunit/phpunit": "^12.2",
+        "friends-of-behat/symfony-extension": "^2.6.2",
+        "phpunit/phpunit": "^12.3",
         "symfony/browser-kit": "7.3.*",
         "symfony/css-selector": "7.3.*"
     }

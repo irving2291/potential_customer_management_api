@@ -9,6 +9,9 @@ services:
     App\Shared\Infrastructure\ApiExceptionSubscriber:
         tags:
             - { name: kernel.event_subscriber }
+    App\Shared\Infrastructure\OrganizationHeaderSubscriber:
+        tags:
+            - { name: kernel.event_subscriber }
     App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface:
         '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestInformationRepository'
     App\PotentialCustomer\Domain\Repository\PotentialCustomerRepositoryInterface:

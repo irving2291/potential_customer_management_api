@@ -12,7 +12,7 @@ class RequestInformationTest extends TestCase
 {
     public function testCreateRequestInformation(): void
     {
-        $status = new RequestInformationStatus('test-id', 'test-code', 'test-name', true);
+        $status = new RequestInformationStatus('test-id', 'test-code', 'test-name', true, 'a851bb2c-6748-4f4f-a3f9-243889b2d834');
         $info = new RequestInformation(
             null,
             'product-uuid',

@@ -6,7 +6,11 @@ use App\RequestInformation\Domain\Entity\RequestInformationStatus;
 
 interface RequestInformationStatusRepositoryInterface
 {
+    public function save(RequestInformationStatus $request): RequestInformationStatus;
+    public function  findByOrganizationId(string $organizationId);
+
     public function findByCode(string $code): ?RequestInformationStatus;
+
     public function findById(string $id): ?RequestInformationStatus;
 
     public function findDefault(): ?RequestInformationStatus;

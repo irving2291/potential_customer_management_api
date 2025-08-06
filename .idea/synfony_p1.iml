@@ -137,8 +137,6 @@
       <excludeFolder url="file://$MODULE_DIR$/app/vendor/zircote/swagger-php" />
       <excludeFolder url="file://$MODULE_DIR$/app/vendor/behat/behat" />
       <excludeFolder url="file://$MODULE_DIR$/app/vendor/behat/gherkin" />
-      <excludeFolder url="file://$MODULE_DIR$/app/vendor/behat/mink" />
-      <excludeFolder url="file://$MODULE_DIR$/app/vendor/behat/mink-browserkit-driver" />
       <excludeFolder url="file://$MODULE_DIR$/app/vendor/friends-of-behat/symfony-extension" />
       <excludeFolder url="file://$MODULE_DIR$/app/vendor/symfony/translation" />
       <excludeFolder url="file://$MODULE_DIR$/app/vendor/doctrine/data-fixtures" />

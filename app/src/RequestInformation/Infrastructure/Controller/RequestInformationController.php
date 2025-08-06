@@ -1,15 +1,19 @@
 <?php
 namespace App\RequestInformation\Infrastructure\Controller;
 
+use App\RequestInformation\Application\Command\AddRequestInformationStatusCommand;
 use App\RequestInformation\Application\Command\AddRequestNoteCommand;
 use App\RequestInformation\Application\Command\ChangeRequestStatusCommand;
 use App\RequestInformation\Application\Command\DeleteRequestNoteCommand;
 use App\RequestInformation\Application\Command\UpdateRequestNoteCommand;
+use App\RequestInformation\Application\CommandHandler\AddRequestInformationStatusHandler;
 use App\RequestInformation\Application\CommandHandler\AddRequestNoteHandler;
 use App\RequestInformation\Application\CommandHandler\ChangeRequestStatusHandler;
 use App\RequestInformation\Application\CommandHandler\DeleteRequestNoteHandler;
 use App\RequestInformation\Application\Query\GetRequestSummaryQuery;
+use App\RequestInformation\Domain\Entity\RequestInformationStatus;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
+use App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface;
 use App\RequestInformation\Domain\Repository\RequestNoteRepositoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Messenger\Exception\ExceptionInterface;
@@ -62,10 +66,7 @@ class RequestInformationController extends AbstractController
         Request $request,
         MessageBusInterface $commandBus
     ): JsonResponse {
-        $organizationId = $request->headers->get('organization');
-        if (!$organizationId) {
-            return $this->json(['error' => true, 'message' => 'No data organization', 'debug_content' => $request->headers->get('organization')], 400);
-        }
+        $organizationId = $request->headers->get('x-org-id');
 
         $data = json_decode($request->getContent(), true);
 
@@ -454,4 +455,81 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
+    #[Route('/api/v1/requests-information/status', name: 'list_request_status', methods: ['GET'])]
+    #[OA\Get(
+        summary: "Obtener todos los estados disponibles",
+        tags: ['RequestStatus'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Lista de estados disponibles",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(
+                            property: "status",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "id", type: "string"),
+                                    new OA\Property(property: "code", type: "string"),
+                                    new OA\Property(property: "label", type: "string")
+                                ]
+                            )
+                        )
+                    ]
+                )
+            )
+        ]
+    )]
+    public function listStatus(Request $request, RequestInformationStatusRepositoryInterface $repo): JsonResponse
+    {
+        $organizationId = $request->headers->get('x-org-id');
+
+        $status = $repo->findByOrganizationId($organizationId);
+        $data = array_map(fn($s) => [
+            'id' => $s->getId(),
+            'code' => $s->getCode(),
+            'name' => $s->getName()
+        ], $status);
+
+        return $this->json(['status' => $data]);
+    }
+
+
+    #[Route('/api/v1/requests-information/status', name: 'create_request_status', methods: ['POST'])]
+    #[OA\Post(
+        summary: "Crear un nuevo estado",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["code", "label"],
+                properties: [
+                    new OA\Property(property: "code", type: "string"),
+                    new OA\Property(property: "label", type: "string")
+                ]
+            )
+        ),
+        tags: ['RequestStatus'],
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: "Estado creado correctamente"
+            )
+        ]
+    )]
+    public function createStatus(Request $request, AddRequestInformationStatusHandler $handler): JsonResponse
+    {
+        $organizationId = $request->headers->get('x-org-id');
+
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['code']) || empty($data['name'])) {
+            return $this->json(['error' => true, 'message' => 'code and name are required'], 400);
+        }
+
+        $command = new AddRequestInformationStatusCommand($data['coder'], $data['name'], $organizationId);
+        $handler->__invoke($command);
+
+        return $this->json(['success' => true], 201);
+    }
 }

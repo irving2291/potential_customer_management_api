@@ -40,7 +40,7 @@ class CreateRequestInformationHandlerTest extends TestCase
         $mockStatusRepo->expects($this->once())
             ->method('findDefault')
             ->willReturn(new RequestInformationStatus(
-                'test-id', 'test-code', 'test-name', true
+                'test-id', 'test-code', 'test-name', true, 'a851bb2c-6748-4f4f-a3f9-243889b2d834'
             ));
 
         // Esperamos que save se llame en ambos repos
@@ -83,7 +83,7 @@ class CreateRequestInformationHandlerTest extends TestCase
         $mockCustomerRepo->method('findOneByEmail')->willReturn(null);
         $mockRequestRepo->method('existsByEmailProgramAndLeadInThreeMonth')->willReturn(true);
         $mockStatusRepo->method('findDefault')->willReturn(
-            new RequestInformationStatus('test-id', 'test-code', 'test-name', true)
+            new RequestInformationStatus('test-id', 'test-code', 'test-name', true, 'a851bb2c-6748-4f4f-a3f9-243889b2d834')
         );
 
         $handler = new CreateRequestInformationHandler($mockCustomerRepo, $mockRequestRepo, $mockStatusRepo);

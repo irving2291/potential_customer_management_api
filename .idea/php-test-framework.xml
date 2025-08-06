@@ -13,6 +13,13 @@
   </component>
   <component name="PhpTestFrameworkVersionCache">
     <tools_cache>
+      <tool tool_name="Behat">
+        <cache>
+          <versions>
+            <info id="interpreter-6017f5d8-1402-464a-a1e3-f2e98b915cc3/opt/project/app/vendor/behat/behat/bin/behat" version="3.23.0.0" />
+          </versions>
+        </cache>
+      </tool>
       <tool tool_name="PHPUnit">
         <cache>
           <versions>

@@ -11,6 +11,7 @@ services:
       - ./app/config:/var/www/html/config
       - ./app/public:/var/www/html/public
       - ./app/migrations:/var/www/html/migrations
+      - ./app/features:/var/www/html/features
       - var_data:/var/www/html/var # cache y logs SOLO en el contenedor
       # Si quieres montar tests para correr pruebas, puedes agregar:
       - ./app/tests:/var/www/html/tests

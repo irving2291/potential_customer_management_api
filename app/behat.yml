@@ -6,4 +6,6 @@ default:
     extensions:
         FriendsOfBehat\SymfonyExtension:
             kernel:
-                class: App\Kernel
+                environment: 'test'
+                debug: true
+            bootstrap: tests/bootstrap.php
