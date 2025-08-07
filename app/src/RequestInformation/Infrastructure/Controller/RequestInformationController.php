@@ -31,7 +31,7 @@ class RequestInformationController extends AbstractController
     /**
      * @throws ExceptionInterface
      */
-    #[Route('/api/v1/requests-information', name: 'create_request_information', methods: ['POST'])]
+    #[Route('/requests-information', name: 'create_request_information', methods: ['POST'])]
     #[OA\Post(
         summary: "Crear una petición de información",
         requestBody: new OA\RequestBody(
@@ -95,7 +95,7 @@ class RequestInformationController extends AbstractController
     /**
      * @throws ExceptionInterface
      */
-    #[Route('/api/v1/requests-information/summary', name: 'requests_information_summary', methods: ['GET'])]
+    #[Route('/requests-information/summary', name: 'requests_information_summary', methods: ['GET'])]
     #[OA\Get(
         summary: "Summary of requests by state in a date range",
         tags: ['RequestInformation'],
@@ -147,7 +147,7 @@ class RequestInformationController extends AbstractController
 
 
 
-    #[Route('/api/v1/requests-information', name: 'requests_information_list', methods: ['GET'])]
+    #[Route('/requests-information', name: 'requests_information_list', methods: ['GET'])]
     #[OA\Get(
         summary: "Lista peticiones por estado, paginadas",
         tags: ['RequestInformation'],
@@ -239,7 +239,7 @@ class RequestInformationController extends AbstractController
     }
 
 
-    #[Route('/api/v1/requests-information/{id}/status', name: 'change_request_status', methods: ['PATCH'])]
+    #[Route('/requests-information/{id}/status', name: 'change_request_status', methods: ['PATCH'])]
     #[OA\Patch(
         summary: "Change the status of a request information",
         requestBody: new OA\RequestBody(
@@ -278,7 +278,7 @@ class RequestInformationController extends AbstractController
     /**
      * @throws ExceptionInterface
      */
-    #[Route('/api/v1/requests-information/{id}/notes', name: 'add_request_note', methods: ['POST'])]
+    #[Route('/requests-information/{id}/notes', name: 'add_request_note', methods: ['POST'])]
     #[OA\Post(
         summary: "Add a note to a request information",
         requestBody: new OA\RequestBody(
@@ -316,7 +316,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/api/v1/requests-information/{id}/notes', name: 'list_request_notes', methods: ['GET'])]
+    #[Route('/requests-information/{id}/notes', name: 'list_request_notes', methods: ['GET'])]
     #[OA\Get(
         description: "Get all notes (not soft-deleted) for a given request information.",
         summary: "List notes for a request information",
@@ -371,7 +371,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['notes' => $result]);
     }
 
-    #[Route('/api/v1/requests-information/notes/{noteId}', name: 'update_request_note', methods: ['PATCH'])]
+    #[Route('/requests-information/notes/{noteId}', name: 'update_request_note', methods: ['PATCH'])]
     #[OA\Patch(
         description: "Update the text and set updatedAt for a note.",
         summary: "Update the content of a note",
@@ -420,7 +420,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/api/v1/requests-information/notes/{noteId}', name: 'delete_request_note', methods: ['DELETE'])]
+    #[Route('/requests-information/notes/{noteId}', name: 'delete_request_note', methods: ['DELETE'])]
     #[OA\Delete(
         description: "Mark a note as deleted (soft delete, sets deletedAt).",
         summary: "Soft delete a note",
@@ -455,7 +455,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/api/v1/requests-information/status', name: 'list_request_status', methods: ['GET'])]
+    #[Route('/requests-information/status', name: 'list_request_status', methods: ['GET'])]
     #[OA\Get(
         summary: "Obtener todos los estados disponibles",
         tags: ['RequestStatus'],
@@ -496,7 +496,7 @@ class RequestInformationController extends AbstractController
     }
 
 
-    #[Route('/api/v1/requests-information/status', name: 'create_request_status', methods: ['POST'])]
+    #[Route('/requests-information/status', name: 'create_request_status', methods: ['POST'])]
     #[OA\Post(
         summary: "Crear un nuevo estado",
         requestBody: new OA\RequestBody(

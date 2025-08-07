@@ -7,15 +7,15 @@ nelmio_api_doc:
                 Documenta todos los servicios bajo `/api`.
             version: '1.0.0'
         servers:
-            - url: 'http://localhost:8080'
-              description: 'Servidor de desarrollo local'
+            - url: 'https://crm.pitahayasoft.com'
+              description: 'Customer Relationship Management'
             # Agrega más servers si tienes ambientes de staging/prod:
             # - url: 'https://api.midominio.com'
             #   description: 'Producción'
         contact:
             name: 'Equipo PitahayaSoft'
             email: 'soporte@pitahayasoft.com'
-            url: 'https://pitahayasoft.com'
+            url: 'https://crm.pitahayasoft.com'
         license:
             name: 'MIT'
             url: 'https://opensource.org/licenses/MIT'
