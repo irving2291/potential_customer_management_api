@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-dev
     container_name: symfony_app
     working_dir: /var/www/html
     volumes:
@@ -17,7 +17,22 @@ services:
       - ./app/tests:/var/www/html/tests
     environment:
       - APP_ENV=dev
-      - DATABASE_URL=mysql://root:root@db:3306/symfony
+      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
+    depends_on:
+      - db
+    networks:
+      - symfony
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - db
     networks:
@@ -26,14 +41,14 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-dev
     container_name: symfony_worker
     working_dir: /var/www/html
     volumes:
       - ./app:/var/www/html
     environment:
       - APP_ENV=dev
-      - DATABASE_URL=mysql://root:root@db:3306/symfony
+      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
     depends_on:
       - db
       - rabbitmq
@@ -44,35 +59,36 @@ services:
       - symfony
 
   db:
-    image: mysql:8.1
+    image: postgres:16
     container_name: symfony_db
     restart: always
     environment:
-      MYSQL_DATABASE: symfony
-      MYSQL_ROOT_PASSWORD: root
+      POSTGRES_DB: symfony
+      POSTGRES_USER: symfony
+      POSTGRES_PASSWORD: symfony
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data:/var/lib/postgresql/data
     networks:
       - symfony
 
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: symfony_phpmyadmin
-    restart: always
-    ports:
-      - "8081:80"
-    environment:
-      PMA_HOST: db
-      PMA_PORT: 3306
-      PMA_USER: root
-      PMA_PASSWORD: root
-      PMA_ARBITRARY: 1
-    depends_on:
-      - db
-    networks:
-      - symfony
+#  phpmyadmin:
+#    image: phpmyadmin/phpmyadmin
+#    container_name: symfony_phpmyadmin
+#    restart: always
+#    ports:
+#      - "8081:80"
+#    environment:
+#      PMA_HOST: db
+#      PMA_PORT: 3306
+#      PMA_USER: root
+#      PMA_PASSWORD: root
+#      PMA_ARBITRARY: 1
+#    depends_on:
+#      - db
+#    networks:
+#      - symfony
 
   nginx:
     image: nginx:alpine
@@ -102,6 +118,7 @@ services:
 volumes:
   db_data:
   var_data:
+  pgadmin_data:
 
 networks:
   symfony:

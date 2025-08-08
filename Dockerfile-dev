@@ -1,0 +1,61 @@
+FROM php:8.3-fpm-alpine
+
+# Dependencias para build y extensiones
+RUN apk add --no-cache \
+    nginx \
+    supervisor \
+    git \
+    unzip \
+    icu-dev \
+    libzip-dev \
+    oniguruma-dev \
+    rabbitmq-c-dev \
+    bash \
+    autoconf \
+    build-base \
+    libtool \
+    postgresql-dev \
+    openssl-dev \
+    freetype-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    libwebp-dev \
+    libxpm-dev \
+    zlib-dev \
+    && docker-php-ext-install intl pdo pdo_pgsql zip opcache \
+    && pecl install amqp \
+    && docker-php-ext-enable amqp
+
+# Instala Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# App setup
+WORKDIR /var/www/html
+COPY ./app /var/www/html
+
+# Entorno de desarrollo
+ENV APP_ENV=dev
+ENV APP_DEBUG=1
+ENV SYMFONY_SKIP_AUTO_RUN=1
+
+# Instala Composer CON dependencias de desarrollo y permite scripts
+RUN composer install --dev --optimize-autoloader --no-interaction
+
+# No limpies cache ni warmup de prod en dev
+# Los assets y cache se regeneran en caliente en dev
+
+# Configuración nginx y supervisor
+COPY ./infra/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY ./infra/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY ./infra/supervisord/supervisord.conf /etc/supervisord.conf
+
+# Copia entrypoint
+COPY ./infra/docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Exponer puerto HTTP
+EXPOSE 80
+
+# Usa el entrypoint que corre migraciones antes de supervisor/nginx/php-fpm
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
