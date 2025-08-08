@@ -51,5 +51,14 @@ COPY ./infra/supervisord/supervisord.conf /etc/supervisord.conf
 # Exponer puerto HTTP
 EXPOSE 80
 
-# Ejecutar ambos servicios
+
+COPY ./infra/docker/entrypoint.sh /entrypoint.sh
+
+# Asegúrate de permisos (por si el COPY los quita)
+RUN chmod +x /entrypoint.sh
+
+# Cambia el ENTRYPOINT para usar tu script
+ENTRYPOINT ["/entrypoint.sh"]
+
+# El CMD es igual, supervisord lanza nginx + php-fpm
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
