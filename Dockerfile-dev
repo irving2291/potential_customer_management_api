@@ -39,7 +39,7 @@ ENV APP_DEBUG=1
 ENV SYMFONY_SKIP_AUTO_RUN=1
 
 # Instala Composer CON dependencias de desarrollo y permite scripts
-RUN composer install --dev --optimize-autoloader --no-interaction
+RUN composer install --optimize-autoloader --no-interaction
 
 # No limpies cache ni warmup de prod en dev
 # Los assets y cache se regeneran en caliente en dev
