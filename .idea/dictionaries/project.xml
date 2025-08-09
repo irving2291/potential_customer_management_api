@@ -2,6 +2,7 @@
   <dictionary name="project">
     <words>
       <w>awset</w>
+      <w>healthz</w>
     </words>
   </dictionary>
 </component>

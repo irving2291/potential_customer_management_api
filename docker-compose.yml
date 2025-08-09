@@ -17,7 +17,7 @@ services:
       - ./app/tests:/var/www/html/tests
     environment:
       - APP_ENV=dev
-      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
+#      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
     depends_on:
       - db
     networks:
@@ -48,7 +48,7 @@ services:
       - ./app:/var/www/html
     environment:
       - APP_ENV=dev
-      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
+#      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
     depends_on:
       - db
       - rabbitmq
