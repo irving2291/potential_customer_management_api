@@ -20,6 +20,7 @@ class CommonController extends AbstractController
     {
         return $this->json([
             'db' => $_ENV['DATABASE_URL'],
+            'env' => $_ENV['APP_ENV'],
         ], 200);
     }
 }

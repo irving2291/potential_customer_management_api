@@ -17,22 +17,7 @@ services:
       - ./app/tests:/var/www/html/tests
     environment:
       - APP_ENV=dev
-#      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
-    depends_on:
-      - db
-    networks:
-      - symfony
-
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
     depends_on:
       - db
     networks:
@@ -48,13 +33,28 @@ services:
       - ./app:/var/www/html
     environment:
       - APP_ENV=dev
-#      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
+      - DATABASE_URL=pgsql://symfony:symfony@db:5432/symfony?serverVersion=16&charset=utf8
     depends_on:
       - db
       - rabbitmq
       - app
     command: php bin/console messenger:consume async -vv --time-limit=3600 --memory-limit=128M --no-interaction
     restart: always
+    networks:
+      - symfony
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
     networks:
       - symfony
 
