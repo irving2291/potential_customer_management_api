@@ -14,13 +14,4 @@ class CommonController extends AbstractController
     {
         return $this->json(['success' => true], Response::HTTP_OK);
     }
-
-    #[Route('/env-test', name: 'health_check', methods: ['GET'])]
-    public function envTest(): JsonResponse
-    {
-        return $this->json([
-            'db' => $_ENV['DATABASE_URL'],
-            'env' => $_ENV['APP_ENV'],
-        ], 200);
-    }
 }
