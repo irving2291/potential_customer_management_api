@@ -88,7 +88,9 @@ jobs:
         run: ./vendor/bin/behat --format=progress --stop-on-failure
 
   deploy:
+    name: Build & Deploy to App Runner
     runs-on: ubuntu-latest
+    needs: test
 
     steps:
       - name: Checkout code
