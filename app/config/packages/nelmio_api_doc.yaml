@@ -7,7 +7,7 @@ nelmio_api_doc:
                 Documenta todos los servicios bajo `/api`.
             version: '1.0.0'
         servers:
-            - url: 'https://crm.pitahayasoft.com'
+            - url: 'https://boost.pitahayasoft.com/api/v1'
               description: 'Customer Relationship Management'
             # Agrega más servers si tienes ambientes de staging/prod:
             # - url: 'https://api.midominio.com'
@@ -15,13 +15,13 @@ nelmio_api_doc:
         contact:
             name: 'Equipo PitahayaSoft'
             email: 'soporte@pitahayasoft.com'
-            url: 'https://crm.pitahayasoft.com'
+            url: 'https://boost.pitahayasoft.com/api/v1'
         license:
             name: 'MIT'
             url: 'https://opensource.org/licenses/MIT'
     areas:
         default:
             path_patterns:
-                - ^/api(?!/doc$)
+                - ^/(?!doc)
     models:
         use_jms: false

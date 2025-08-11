@@ -33,7 +33,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Vars base (no secrets aquí)
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
     APP_ENV=prod \
-    APP_DEBUG=1 \
+    APP_DEBUG=0 \
     SYMFONY_SKIP_AUTO_RUN=1
 
 WORKDIR /var/www/html
