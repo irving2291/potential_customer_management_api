@@ -9,6 +9,7 @@ env:
   ECR_REPO: ${{ secrets.ECR_REPO }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   IMAGE_TAG: latest
+  APP_DIR: app  # <-- tu subdirectorio Symfony
 
 jobs:
   test:
@@ -45,10 +46,11 @@ jobs:
         with:
           path: |
             ~/.composer/cache
-            vendor
+            ${{ env.APP_DIR }}/vendor
           key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
           restore-keys: composer-${{ runner.os }}-
 
+      # 👇 Composer corre en la RAÍZ (donde está composer.json)
       - name: Install dependencies (with dev)
         run: composer install --no-interaction --prefer-dist
 
@@ -61,30 +63,30 @@ jobs:
             echo "Waiting for Postgres..."; sleep 2
           done
 
+      # 👇 Todo lo de Symfony corre dentro de app/
       - name: Prepare test env (Doctrine)
+        working-directory: ${{ env.APP_DIR }}
         env:
           DATABASE_URL: "postgresql://symfony:secret@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8"
         run: |
-          # .env.test.local para que Symfony use Postgres en test
           echo "APP_ENV=test" > .env.test.local
           echo 'DATABASE_URL=${DATABASE_URL}' >> .env.test.local
           php bin/console doctrine:database:create --env=test --if-not-exists
-          # Si usas migrations:
-          php bin/console doctrine:migrations:migrate --env=test --no-interaction
-          # O, si no usas migrations, crea el schema:
-          # php bin/console doctrine:schema:create --env=test
+          # Usa migrations si las tienes, si no, schema:create
+          php bin/console doctrine:migrations:migrate --env=test --no-interaction || php bin/console doctrine:schema:create --env=test
 
       - name: Run PHPUnit
+        working-directory: ${{ env.APP_DIR }}
         env:
           APP_ENV: test
           DATABASE_URL: "postgresql://symfony:secret@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8"
         run: ./vendor/bin/phpunit --fail-on-risky --fail-on-warning
 
       - name: Run Behat
+        working-directory: ${{ env.APP_DIR }}
         env:
           APP_ENV: test
           DATABASE_URL: "postgresql://symfony:secret@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8"
-          # Si tus features pegan a HTTP real, define también APP_URL o BASE_URL según tu behat.yml
         run: ./vendor/bin/behat --format=progress --stop-on-failure
 
   deploy:
