@@ -21,7 +21,7 @@ class OrganizationHeaderSubscriber implements EventSubscriberInterface
         $request = $event->getRequest();
         $orgId = $request->headers->get('x-org-id');
 
-        if (str_starts_with($request->getPathInfo(), '/api/v1/requests-information')) {
+        if (str_starts_with($request->getPathInfo(), '/requests-information')) {
             if (!$orgId) {
                 $response = new JsonResponse(['error' => true, 'message' => 'Organization header (x-org-id) is required'], 400);
                 $event->setResponse($response);

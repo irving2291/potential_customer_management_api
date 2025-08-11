@@ -18,7 +18,7 @@ use OpenApi\Attributes as OA;
 
 class QuotationController extends AbstractController
 {
-    #[Route('/api/v1/quotations', name: 'create_quotation', methods: ['POST'])]
+    #[Route('/quotations', name: 'create_quotation', methods: ['POST'])]
     #[OA\Post(
         summary: "Create a new quotation",
         requestBody: new OA\RequestBody(
@@ -74,7 +74,7 @@ class QuotationController extends AbstractController
         return $this->json(['success' => true], 201);
     }
 
-    #[Route('/api/v1/quotations/{id}', name: 'get_quotation_by_id', methods: ['GET'])]
+    #[Route('/quotations/{id}', name: 'get_quotation_by_id', methods: ['GET'])]
     #[OA\Get(
         summary: "Get quotation by its ID",
         tags: ['Quotation'],
@@ -146,7 +146,7 @@ class QuotationController extends AbstractController
         ]);
     }
 
-    #[Route('/api/v1/quotations/request-information/{requestInformationId}', name: 'get_quotation_by_request_information', methods: ['GET'])]
+    #[Route('/quotations/request-information/{requestInformationId}', name: 'get_quotation_by_request_information', methods: ['GET'])]
     #[OA\Get(
         summary: "Get quotation by RequestInformation ID",
         tags: ['Quotation'],
@@ -218,7 +218,7 @@ class QuotationController extends AbstractController
         ]);
     }
 
-    #[Route('/api/v1/quotations/{id}/status', name: 'change_quotation_status', methods: ['PATCH'])]
+    #[Route('/quotations/{id}/status', name: 'change_quotation_status', methods: ['PATCH'])]
     #[OA\Patch(
         summary: "Change status of a quotation",
         requestBody: new OA\RequestBody(
@@ -265,7 +265,7 @@ class QuotationController extends AbstractController
     }
 
 
-    #[Route('/api/v1/quotations/{id}/details', name: 'add_quotation_detail', methods: ['POST'])]
+    #[Route('/quotations/{id}/details', name: 'add_quotation_detail', methods: ['POST'])]
     #[OA\Post(
         summary: "Add a detail to the quotation",
         requestBody: new OA\RequestBody(
@@ -313,7 +313,7 @@ class QuotationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/api/v1/quotations/{id}/details/{index}', name: 'edit_quotation_detail', methods: ['PATCH'])]
+    #[Route('/quotations/{id}/details/{index}', name: 'edit_quotation_detail', methods: ['PATCH'])]
     #[OA\Patch(
         summary: "Edit a detail of the quotation by index",
         requestBody: new OA\RequestBody(
@@ -370,7 +370,7 @@ class QuotationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/api/v1/quotations/{id}/details/{index}', name: 'remove_quotation_detail', methods: ['DELETE'])]
+    #[Route('/quotations/{id}/details/{index}', name: 'remove_quotation_detail', methods: ['DELETE'])]
     #[OA\Delete(
         summary: "Remove a detail from the quotation by index",
         tags: ['QuotationDetail'],
