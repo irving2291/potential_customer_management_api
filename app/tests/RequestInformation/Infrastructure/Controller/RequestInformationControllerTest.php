@@ -11,12 +11,12 @@ class RequestInformationControllerTest extends WebTestCase
         $client = static::createClient();
         $client->request(
             'POST',
-            '/api/v1/requests-information',
+            '/requests-information',
             [],
             [],
             [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_ORGANIZATION' => 'a851bb2c-6748-4f4f-a3f9-243889b2d834'
+                'X-Org-Id' => 'a851bb2c-6748-4f4f-a3f9-243889b2d834'
             ],
             json_encode([
                 'programInterest' => '38f26958-0da7-4779-899d-7c78a9fad30c',
@@ -37,7 +37,7 @@ class RequestInformationControllerTest extends WebTestCase
     public function testGetRequestInformationSummary(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/api/v1/requests-information/summary?from=2025-07-01&to=2025-07-31');
+        $client->request('GET', '/requests-information/summary?from=2025-07-01&to=2025-07-31');
         $this->assertResponseIsSuccessful();
 
         $content = $client->getResponse()->getContent();

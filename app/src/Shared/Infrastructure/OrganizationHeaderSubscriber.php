@@ -19,11 +19,11 @@ class OrganizationHeaderSubscriber implements EventSubscriberInterface
     public function onKernelRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
-        $orgId = $request->headers->get('x-org-id');
+        $orgId = $request->headers->get('X-Org-Id');
 
         if (str_starts_with($request->getPathInfo(), '/requests-information')) {
             if (!$orgId) {
-                $response = new JsonResponse(['error' => true, 'message' => 'Organization header (x-org-id) is required'], 400);
+                $response = new JsonResponse(['error' => true, 'message' => 'Organization header (X-Org-Id) is required'], 400);
                 $event->setResponse($response);
             }
         }
