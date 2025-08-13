@@ -30,7 +30,7 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
 
         // Solo para rutas de /api (opcional)
         $request = $event->getRequest();
-        if (!str_starts_with($request->getPathInfo(), '/api/')) {
+        if (!str_starts_with($request->getPathInfo(), '/')) {
             return;
         }
 
@@ -44,7 +44,8 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
         $response = new JsonResponse([
             'error' => true,
             'message' => $exception->getMessage(),
-            'type' => (new \ReflectionClass($exception))->getShortName()
+            'type' => (new \ReflectionClass($exception))->getShortName(),
+            'trace' => $exception->getTrace()
         ], $statusCode);
 
         $event->setResponse($response);
