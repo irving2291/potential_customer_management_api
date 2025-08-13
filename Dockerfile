@@ -1,16 +1,22 @@
 FROM php:8.3-fpm-alpine
 
-# Dependencias del sistema y extensiones PHP
+# Dependencias del sistema y extensiones PHP (incluye ca-certificates para TLS)
 RUN apk add --no-cache \
     nginx supervisor git unzip icu-dev libzip-dev oniguruma-dev rabbitmq-c-dev \
     bash autoconf build-base libtool postgresql-dev openssl-dev \
     freetype-dev libpng-dev libjpeg-turbo-dev libwebp-dev libxpm-dev zlib-dev netcat-openbsd \
+    ca-certificates \
+ && update-ca-certificates \
  && docker-php-ext-install intl pdo pdo_pgsql pdo_mysql zip opcache pcntl \
  && pecl install amqp \
- && docker-php-ext-enable amqp
+ && docker-php-ext-enable amqp \
+ # Config AMQP SSL: apunta al bundle de CAs del sistema
+ && printf "amqp.cacert=/etc/ssl/certs/ca-certificates.crt\n" \
+      > /usr/local/etc/php/conf.d/99-amqp-ssl.ini
 
-# (opcional) si vas a validar CA, copia la cadena:
+# (opcional) Si prefieres usar el CA específico de Amazon, cópialo y referencia esa ruta:
 # COPY infra/certs/amazonmq-ca.pem /etc/ssl/certs/amazonmq-ca.pem
+# RUN printf "amqp.cacert=/etc/ssl/certs/amazonmq-ca.pem\n" > /usr/local/etc/php/conf.d/99-amqp-ssl.ini
 
 # Instala Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
