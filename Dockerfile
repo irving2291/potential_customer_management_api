@@ -2,30 +2,15 @@ FROM php:8.3-fpm-alpine
 
 # Dependencias del sistema y extensiones PHP
 RUN apk add --no-cache \
-    nginx \
-    supervisor \
-    git \
-    unzip \
-    icu-dev \
-    libzip-dev \
-    oniguruma-dev \
-    rabbitmq-c-dev \
-    bash \
-    autoconf \
-    build-base \
-    libtool \
-    postgresql-dev \
-    openssl-dev \
-    freetype-dev \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    libwebp-dev \
-    libxpm-dev \
-    zlib-dev \
-    netcat-openbsd \
- && docker-php-ext-install intl pdo pdo_pgsql pdo_mysql zip opcache \
+    nginx supervisor git unzip icu-dev libzip-dev oniguruma-dev rabbitmq-c-dev \
+    bash autoconf build-base libtool postgresql-dev openssl-dev \
+    freetype-dev libpng-dev libjpeg-turbo-dev libwebp-dev libxpm-dev zlib-dev netcat-openbsd \
+ && docker-php-ext-install intl pdo pdo_pgsql pdo_mysql zip opcache pcntl \
  && pecl install amqp \
  && docker-php-ext-enable amqp
+
+# (opcional) si vas a validar CA, copia la cadena:
+# COPY infra/certs/amazonmq-ca.pem /etc/ssl/certs/amazonmq-ca.pem
 
 # Instala Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

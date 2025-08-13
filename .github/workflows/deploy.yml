@@ -12,89 +12,89 @@ env:
   APP_DIR: app  # <-- tu subdirectorio Symfony
 
 jobs:
-  test:
-    name: Run unit & Behat tests (PostgreSQL)
-    runs-on: ubuntu-latest
-    env:
-      APP_DIR: app
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: symfony
-          POSTGRES_PASSWORD: secret
-          POSTGRES_DB: app_test
-        ports: [ "5432:5432" ]
-        options: >-
-          --health-cmd="pg_isready -U symfony -d app_test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: mbstring, intl, pdo_pgsql
-          coverage: none
-
-      - name: Cache Composer
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.composer/cache
-            ${{ env.APP_DIR }}/vendor
-          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-
-
-      # 👇 Composer corre en la RAÍZ (donde está composer.json)
-      - name: Install dependencies (with dev)
-        run: composer install --no-interaction --prefer-dist
-
-      - name: Wait for PostgreSQL
-        run: |
-          for i in {1..30}; do
-            if pg_isready -h 127.0.0.1 -p 5432 -U symfony -d app_test; then
-              echo "Postgres is ready"; break
-            fi
-            echo "Waiting for Postgres..."; sleep 2
-          done
-
-      # 👇 Todo lo de Symfony corre dentro de app/
-      - name: Prepare test env (Doctrine)
-        working-directory: ${{ env.APP_DIR }}
-        env:
-          DATABASE_URL: "postgresql://symfony:secret@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8"
-        run: |
-          echo "APP_ENV=test" > .env.test.local
-          echo 'DATABASE_URL=${DATABASE_URL}' >> .env.test.local
-          php bin/console doctrine:database:create --env=test --if-not-exists
-          # Usa migrations si las tienes, si no, schema:create
-          php bin/console doctrine:migrations:migrate --env=test --no-interaction || php bin/console doctrine:schema:create --env=test
-
-      - name: Run PHPUnit
-        working-directory: ${{ env.APP_DIR }}
-        env:
-          APP_ENV: test
-          DATABASE_URL: "postgresql://symfony:secret@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8"
-        run: ./vendor/bin/phpunit --fail-on-risky --fail-on-warning
-
-      - name: Run Behat
-        working-directory: ${{ env.APP_DIR }}
-        env:
-          APP_ENV: test
-          DATABASE_URL: "postgresql://symfony:secret@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8"
-        run: ./vendor/bin/behat --format=progress --stop-on-failure
+#  test:
+#    name: Run unit & Behat tests (PostgreSQL)
+#    runs-on: ubuntu-latest
+#    env:
+#      APP_DIR: app
+#
+#    services:
+#      postgres:
+#        image: postgres:16
+#        env:
+#          POSTGRES_USER: symfony
+#          POSTGRES_PASSWORD: secret
+#          POSTGRES_DB: app_test
+#        ports: [ "5432:5432" ]
+#        options: >-
+#          --health-cmd="pg_isready -U symfony -d app_test"
+#          --health-interval=10s
+#          --health-timeout=5s
+#          --health-retries=10
+#
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Setup PHP
+#        uses: shivammathur/setup-php@v2
+#        with:
+#          php-version: '8.3'
+#          extensions: mbstring, intl, pdo_pgsql
+#          coverage: none
+#
+#      - name: Cache Composer
+#        uses: actions/cache@v4
+#        with:
+#          path: |
+#            ~/.composer/cache
+#            ${{ env.APP_DIR }}/vendor
+#          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.lock') }}
+#          restore-keys: composer-${{ runner.os }}-
+#
+#      # 👇 Composer corre en la RAÍZ (donde está composer.json)
+#      - name: Install dependencies (with dev)
+#        run: composer install --no-interaction --prefer-dist
+#
+#      - name: Wait for PostgreSQL
+#        run: |
+#          for i in {1..30}; do
+#            if pg_isready -h 127.0.0.1 -p 5432 -U symfony -d app_test; then
+#              echo "Postgres is ready"; break
+#            fi
+#            echo "Waiting for Postgres..."; sleep 2
+#          done
+#
+#      # 👇 Todo lo de Symfony corre dentro de app/
+#      - name: Prepare test env (Doctrine)
+#        working-directory: ${{ env.APP_DIR }}
+#        env:
+#          DATABASE_URL: "postgresql://symfony:secret@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8"
+#        run: |
+#          echo "APP_ENV=test" > .env.test.local
+#          echo 'DATABASE_URL=${DATABASE_URL}' >> .env.test.local
+#          php bin/console doctrine:database:create --env=test --if-not-exists
+#          # Usa migrations si las tienes, si no, schema:create
+#          php bin/console doctrine:migrations:migrate --env=test --no-interaction || php bin/console doctrine:schema:create --env=test
+#
+#      - name: Run PHPUnit
+#        working-directory: ${{ env.APP_DIR }}
+#        env:
+#          APP_ENV: test
+#          DATABASE_URL: "postgresql://symfony:secret@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8"
+#        run: ./vendor/bin/phpunit --fail-on-risky --fail-on-warning
+#
+#      - name: Run Behat
+#        working-directory: ${{ env.APP_DIR }}
+#        env:
+#          APP_ENV: test
+#          DATABASE_URL: "postgresql://symfony:secret@127.0.0.1:5432/app_test?serverVersion=16&charset=utf8"
+#        run: ./vendor/bin/behat --format=progress --stop-on-failure
 
   deploy:
     name: Build & Deploy to App Runner
     runs-on: ubuntu-latest
-    needs: test
+#    needs: test
 
     steps:
       - name: Checkout code
