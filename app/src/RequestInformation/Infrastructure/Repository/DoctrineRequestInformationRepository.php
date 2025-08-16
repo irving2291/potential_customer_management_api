@@ -62,18 +62,20 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
         return $qb->getQuery()->getSingleScalarResult() > 0;
     }
 
-    public function findByStatusPaginated(
-        string $status,
+    public function getAllPaginated(
+        ?string $status,
         int $page = 1,
         int $limit = 10
     ): array {
         $qb = $this->em->createQueryBuilder();
         $qb->select('r')
-            ->from(DoctrineRequestInformationEntity::class, 'r')
-            ->innerJoin('r.status', 's')
-            ->where('s.code = :status')
-            ->setParameter('status', $status)
-            ->orderBy('r.createdAt', 'DESC')
+            ->from(DoctrineRequestInformationEntity::class, 'r');
+        if($status) {
+            $qb->innerJoin('r.status', 's')
+                ->where('s.code = :status')
+                ->setParameter('status', $status);
+        }
+        $qb->orderBy('r.createdAt', 'DESC')
             ->setFirstResult(($page - 1) * $limit)
             ->setMaxResults($limit);
 

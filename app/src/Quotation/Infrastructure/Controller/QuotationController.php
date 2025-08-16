@@ -18,6 +18,145 @@ use OpenApi\Attributes as OA;
 
 class QuotationController extends AbstractController
 {
+    #[Route('/quotations', name: 'list_quotations_by_org', methods: ['GET'])]
+    #[OA\Get(
+        summary: "List all quotations by organization (paginated)",
+        tags: ['Quotation'],
+        parameters: [
+            new OA\Parameter(
+                name: "X-Org-Id",
+                description: "Organization ID (passed in request header)",
+                in: "header",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "page",
+                description: "Page number (default: 1)",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "integer", default: 1, minimum: 1)
+            ),
+            new OA\Parameter(
+                name: "perPage",
+                description: "Items per page (default: 20, max: 100)",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "integer", default: 20, maximum: 100, minimum: 1)
+            ),
+            new OA\Parameter(
+                name: "orderBy",
+                description: "Field to order by (default: createdAt)",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "string", default: "createdAt")
+            ),
+            new OA\Parameter(
+                name: "direction",
+                description: "Sort direction ASC|DESC (default: DESC)",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "string", default: "DESC", enum: ["ASC", "DESC"])
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Paginated list of quotations for the given organization",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(
+                            property: "items",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "id", type: "string"),
+                                    new OA\Property(property: "requestInformationId", type: "string"),
+                                    new OA\Property(
+                                        property: "details",
+                                        type: "array",
+                                        items: new OA\Items(
+                                            properties: [
+                                                new OA\Property(property: "description", type: "string"),
+                                                new OA\Property(property: "unitPrice", type: "number", format: "float"),
+                                                new OA\Property(property: "quantity", type: "integer"),
+                                                new OA\Property(property: "total", type: "number", format: "float")
+                                            ]
+                                        )
+                                    ),
+                                    new OA\Property(property: "status", type: "string"),
+                                    new OA\Property(property: "createdAt", type: "string", format: "date-time"),
+                                    new OA\Property(property: "updatedAt", type: "string", format: "date-time", nullable: true),
+                                    new OA\Property(property: "deletedAt", type: "string", format: "date-time", nullable: true)
+                                ]
+                            )
+                        ),
+                        new OA\Property(
+                            property: "meta",
+                            properties: [
+                                new OA\Property(property: "total", type: "integer"),
+                                new OA\Property(property: "page", type: "integer"),
+                                new OA\Property(property: "perPage", type: "integer"),
+                                new OA\Property(property: "pages", type: "integer"),
+                                new OA\Property(property: "orderBy", type: "string"),
+                                new OA\Property(property: "direction", type: "string")
+                            ],
+                            type: "object"
+                        )
+                    ],
+                    type: "object"
+                )
+            ),
+            new OA\Response(response: 400, description: "Missing or invalid organization header")
+        ]
+    )]
+    public function listByOrg(
+        Request $request,
+        QuotationRepositoryInterface $repo
+    ): JsonResponse {
+        $orgId = $request->headers->get('X-Org-Id');
+        if (!$orgId) {
+            return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
+        }
+
+        $page      = max(1, (int) $request->query->get('page', 1));
+        $perPage   = max(1, min(100, (int) $request->query->get('perPage', 20)));
+        $orderBy   = $request->query->get('orderBy', 'createdAt');
+        $direction = strtoupper((string) $request->query->get('direction', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+
+        // Este método debe existir en tu QuotationRepositoryInterface y su implementación
+        // debe devolver: ['items' => Quotation[], 'total' => int, 'page' => int, 'perPage' => int, 'pages' => int]
+        $result = $repo->paginateByOrgId($orgId, $page, $perPage, $orderBy, $direction);
+
+        $items = array_map(fn($quotation) => [
+            'id' => $quotation->getId(),
+            'requestInformationId' => $quotation->getRequestInformationId(),
+            'details' => array_map(fn($d) => [
+                'description' => $d->description,
+                'unitPrice'   => $d->unitPrice,
+                'quantity'    => $d->quantity,
+                'total'       => $d->total
+            ], $quotation->getDetails()),
+            'status' => $quotation->getStatus()->value,
+            'createdAt' => $quotation->getCreatedAt()->format('Y-m-d H:i:s'),
+            'updatedAt' => $quotation->getUpdatedAt()?->format('Y-m-d H:i:s'),
+            'deletedAt' => $quotation->getDeletedAt()?->format('Y-m-d H:i:s'),
+        ], $result['items'] ?? []);
+
+        return $this->json([
+            'items' => $items,
+            'meta' => [
+                'total'     => $result['total'] ?? 0,
+                'page'      => $result['page'] ?? $page,
+                'perPage'   => $result['perPage'] ?? $perPage,
+                'pages'     => $result['pages'] ?? (int) ceil(($result['total'] ?? 0) / $perPage),
+                'orderBy'   => $orderBy,
+                'direction' => $direction,
+            ]
+        ]);
+    }
+
+
     #[Route('/quotations', name: 'create_quotation', methods: ['POST'])]
     #[OA\Post(
         summary: "Create a new quotation",

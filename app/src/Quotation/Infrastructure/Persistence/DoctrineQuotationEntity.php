@@ -25,6 +25,9 @@ class DoctrineQuotationEntity
     #[ORM\Column(type: "string", length: 16)]
     private string $status;
 
+    #[ORM\Column(type: "string", length: 36)]
+    private string $organizationId;
+
     #[ORM\Column(type: "datetime_immutable")]
     private \DateTimeImmutable $createdAt;
 
@@ -65,6 +68,8 @@ class DoctrineQuotationEntity
         return $this->deletedAt;
     }
 
+    public function getOrganization(): string { return $this->organizationId; }
+
     // --- SETTERS ---
     public function setId(string $id): self
     {
@@ -76,29 +81,36 @@ class DoctrineQuotationEntity
         $this->requestInformation = $requestInformation;
         return $this;
     }
+
     public function setDetails(array $details): self
     {
         $this->details = $details;
         return $this;
     }
+
     public function setStatus(string $status): self
     {
         $this->status = $status;
         return $this;
     }
+
     public function setCreatedAt(\DateTimeImmutable $createdAt): self
     {
         $this->createdAt = $createdAt;
         return $this;
     }
+
     public function setUpdatedAt(?\DateTimeImmutable $updatedAt): self
     {
         $this->updatedAt = $updatedAt;
         return $this;
     }
+
     public function setDeletedAt(?\DateTimeImmutable $deletedAt): self
     {
         $this->deletedAt = $deletedAt;
         return $this;
     }
+
+    public function setOrganizationId(string $organizationId): self { $this->organizationId = $organizationId; return $this; }
 }

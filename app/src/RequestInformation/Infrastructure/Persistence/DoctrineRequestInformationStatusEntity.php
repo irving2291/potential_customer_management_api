@@ -24,6 +24,9 @@ class DoctrineRequestInformationStatusEntity
     #[ORM\Column(type: "string", length: 36)]
     private string $organizationId;
 
+    #[ORM\Column(type: "integer", options: ["default" => 0])]
+    private int $sort = 0;
+
     #[ORM\Column(type: "boolean", options: ["default" => false])]
     private bool $isDefault = false;
 
@@ -46,8 +49,11 @@ class DoctrineRequestInformationStatusEntity
     public function getOrganization(): string { return $this->organizationId; }
     public function isDefault(): bool { return $this->isDefault; }
 
+    public function getSort(): int { return $this->sort; }
+
     public function setCode(string $code): self { $this->code = $code; return $this; }
     public function setName(string $name): self { $this->name = $name; return $this; }
     public function setOrganizationId(string $organizationId): self { $this->organizationId = $organizationId; return $this; }
     public function setIsDefault(bool $isDefault): self { $this->isDefault = $isDefault; return $this; }
+    public function setSort(int $sort): self { $this->sort = $sort; return $this; }
 }

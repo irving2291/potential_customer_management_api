@@ -156,7 +156,7 @@ class RequestInformationController extends AbstractController
                 name: "status",
                 description: "Estado a consultar (NEW, IN_PROGRESS, RECONTACT, WON, LOST)",
                 in: "query",
-                required: true,
+                required: false,
                 schema: new OA\Schema(type: "string")
             ),
             new OA\Parameter(
@@ -206,14 +206,7 @@ class RequestInformationController extends AbstractController
         $page = (int) $request->query->get('page', 1);
         $limit = (int) $request->query->get('limit', 10);
 
-        if (!$status) {
-            return $this->json([
-                'error' => true,
-                'message' => 'El parámetro "status" es requerido.'
-            ], 400);
-        }
-
-        $result = $repo->findByStatusPaginated($status, $page, $limit);
+        $result = $repo->getAllPaginated($status, $page, $limit);
 
         // Mapear los datos a un array limpio para API
         $data = array_map(function($item) {

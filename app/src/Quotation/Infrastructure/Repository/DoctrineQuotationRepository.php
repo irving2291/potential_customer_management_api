@@ -81,4 +81,46 @@ class DoctrineQuotationRepository implements QuotationRepositoryInterface
 
         return (int) $qb->getQuery()->getSingleScalarResult() > 0;
     }
+
+    public function paginateByOrgId(
+        string $orgId,
+        int $page = 1,
+        int $perPage = 20,
+        ?string $orderBy = 'createdAt',
+        string $direction = 'DESC'
+    ): array {
+        $page = max(1, $page);
+        $perPage = max(1, min(100, $perPage));
+
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('q')
+            ->from(DoctrineQuotationEntity::class, 'q')
+            ->andWhere('q.organizationId = :orgId')
+            ->andWhere('q.deletedAt IS NULL') // opcional: filtra soft-deleted
+            ->setParameter('orgId', $orgId);
+
+        if ($orderBy !== null) {
+            $direction = strtoupper($direction) === 'ASC' ? 'ASC' : 'DESC';
+            $qb->orderBy('q.' . $orderBy, $direction);
+        }
+
+        $qb->setFirstResult(($page - 1) * $perPage)
+            ->setMaxResults($perPage);
+
+        $paginator = new \Doctrine\ORM\Tools\Pagination\Paginator($qb, true);
+        $total = count($paginator);
+
+        $items = [];
+        foreach ($paginator as $quotation) {
+            $items[] = $quotation; // devuelve entidades Quotation
+        }
+
+        return [
+            'items'   => $items,
+            'total'   => $total,
+            'page'    => $page,
+            'perPage' => $perPage,
+            'pages'   => (int) ceil($total / $perPage),
+        ];
+    }
 }
