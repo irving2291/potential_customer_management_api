@@ -9,6 +9,7 @@ class Quotation
 {
     private ?string $id;
     private string $requestInformationId;
+    private string $organizationId;
     /** @var QuotationDetail[] */
     private array $details;
     private QuotationStatus $status;
@@ -19,6 +20,7 @@ class Quotation
     public function __construct(
         ?string $id,
         string $requestInformationId,
+        string $organizationId,
         array $details,
         ?QuotationStatus $status,
         \DateTimeImmutable $createdAt,
@@ -27,6 +29,7 @@ class Quotation
     ) {
         $this->id = $id;
         $this->requestInformationId = $requestInformationId;
+        $this->organizationId = $organizationId;
         $this->details = $details;
         $this->status = $status ?? QuotationStatus::CREATING;
         $this->createdAt = $createdAt;
@@ -43,6 +46,8 @@ class Quotation
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function getUpdatedAt(): ?\DateTimeImmutable { return $this->updatedAt; }
     public function getDeletedAt(): ?\DateTimeImmutable { return $this->deletedAt; }
+
+    public function getOrganizationId(): string { return $this->organizationId; }
 
     public function setStatus(QuotationStatus $status): self
     {
@@ -80,4 +85,6 @@ class Quotation
         $this->deletedAt = new \DateTimeImmutable();
         return $this;
     }
+
+    public function setOrganizationId(string $organizationId): self { $this->organizationId = $organizationId; return $this; }
 }

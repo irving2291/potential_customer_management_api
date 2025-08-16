@@ -32,6 +32,7 @@ class CreateQuotationHandler
         $quotation = new Quotation(
             uuid_create(UUID_TYPE_RANDOM),
             $command->requestInformationId,
+            $command->organizationId,
             $details,
             $command->status ? QuotationStatus::from($command->status) : QuotationStatus::CREATING,
             new \DateTimeImmutable()

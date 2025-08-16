@@ -23,6 +23,8 @@ services:
     App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface:
         '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestInformationStatusRepository'
 
+    App\Quotation\Application\Query\QuotationQueryServiceInterface:
+        '@App\Quotation\Application\UseCase\ListQuotationsByOrg\QuotationQueryServiceHandler'
 
     App\RequestInformation\Application\CommandHandler\:
         resource: '../src/RequestInformation/Application/CommandHandler/'

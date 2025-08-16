@@ -8,6 +8,7 @@ use App\Quotation\Infrastructure\Persistence\DoctrineQuotationEntity;
 use App\Quotation\Infrastructure\Persistence\QuotationMapper;
 use App\RequestInformation\Infrastructure\Persistence\DoctrineRequestInformationEntity;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 
 class DoctrineQuotationRepository implements QuotationRepositoryInterface
 {
@@ -82,6 +83,15 @@ class DoctrineQuotationRepository implements QuotationRepositoryInterface
         return (int) $qb->getQuery()->getSingleScalarResult() > 0;
     }
 
+    /**
+     * @return array{
+     *   items: Quotation[],
+     *   total: int,
+     *   page: int,
+     *   perPage: int,
+     *   pages: int
+     * }
+     */
     public function paginateByOrgId(
         string $orgId,
         int $page = 1,
@@ -91,36 +101,40 @@ class DoctrineQuotationRepository implements QuotationRepositoryInterface
     ): array {
         $page = max(1, $page);
         $perPage = max(1, min(100, $perPage));
+        $direction = strtoupper($direction) === 'ASC' ? 'ASC' : 'DESC';
 
-        $qb = $this->em->createQueryBuilder();
-        $qb->select('q')
-            ->from(DoctrineQuotationEntity::class, 'q')
-            ->andWhere('q.organizationId = :orgId')
-            ->andWhere('q.deletedAt IS NULL') // opcional: filtra soft-deleted
-            ->setParameter('orgId', $orgId);
-
-        if ($orderBy !== null) {
-            $direction = strtoupper($direction) === 'ASC' ? 'ASC' : 'DESC';
-            $qb->orderBy('q.' . $orderBy, $direction);
+        // Whitelist de columnas de la **ENTIDAD DOCTRINE**
+        $allowedOrder = ['id', 'createdAt', 'updatedAt', 'status'];
+        if ($orderBy === null || !in_array($orderBy, $allowedOrder, true)) {
+            $orderBy = 'createdAt';
         }
 
-        $qb->setFirstResult(($page - 1) * $perPage)
+        $qb = $this->em->createQueryBuilder()
+            ->select('q')
+            ->from(DoctrineQuotationEntity::class, 'q')
+            ->andWhere('q.organizationId = :orgId')
+            ->andWhere('q.deletedAt IS NULL')
+            ->setParameter('orgId', $orgId)
+            ->orderBy('q.' . $orderBy, $direction)
+            ->setFirstResult(($page - 1) * $perPage)
             ->setMaxResults($perPage);
 
-        $paginator = new \Doctrine\ORM\Tools\Pagination\Paginator($qb, true);
+        $paginator = new Paginator($qb, true);
         $total = count($paginator);
 
         $items = [];
-        foreach ($paginator as $quotation) {
-            $items[] = $quotation; // devuelve entidades Quotation
+        /** @var DoctrineQuotationEntity $entity */
+        foreach ($paginator as $entity) {
+            // Mapear **infra → dominio**
+            $items[] = QuotationMapper::toDomain($entity);
         }
 
         return [
-            'items'   => $items,
+            'items'   => $items, // Quotation[] (dominio)
             'total'   => $total,
             'page'    => $page,
             'perPage' => $perPage,
-            'pages'   => (int) ceil($total / $perPage),
+            'pages'   => (int) ceil($total / max(1, $perPage)),
         ];
     }
 }

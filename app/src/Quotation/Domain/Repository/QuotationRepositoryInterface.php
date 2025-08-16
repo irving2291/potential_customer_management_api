@@ -10,12 +10,13 @@ interface QuotationRepositoryInterface
     public function findById(string $id): ?Quotation;
 
     public function paginateByOrgId(
-        string $orgId,
+        string $organizationId,
         int $page = 1,
-        int $perPage = 20,
+        int $perPage = 25,
         ?string $orderBy = 'createdAt',
         string $direction = 'DESC'
     ): array;
+
     public function findByRequestInformationId(string $requestInformationId): ?Quotation;
 
     public function existsActiveQuotationForRequest(string $requestInformationId, array $excludedStatuses = []): bool;

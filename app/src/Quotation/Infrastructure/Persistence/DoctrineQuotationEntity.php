@@ -68,7 +68,9 @@ class DoctrineQuotationEntity
         return $this->deletedAt;
     }
 
-    public function getOrganization(): string { return $this->organizationId; }
+    public function getOrganizationId(): string { return $this->organizationId; }
+
+    public function getRequestInformationId(): string { return $this->requestInformation->getId(); }
 
     // --- SETTERS ---
     public function setId(string $id): self

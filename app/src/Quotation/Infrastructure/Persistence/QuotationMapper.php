@@ -36,6 +36,7 @@ class QuotationMapper
         $entity->setCreatedAt($quotation->getCreatedAt());
         $entity->setUpdatedAt($quotation->getUpdatedAt());
         $entity->setDeletedAt($quotation->getDeletedAt());
+        $entity->setOrganizationId($quotation->getOrganizationId());
 
         return $entity;
     }
@@ -58,6 +59,7 @@ class QuotationMapper
         return new Quotation(
             $entity->getId(),
             $entity->getRequestInformation()->getId(),
+            $entity->getOrganizationId(),
             $details,
             QuotationStatus::from($entity->getStatus()),
             $entity->getCreatedAt(),

@@ -5,7 +5,10 @@ namespace App\Quotation\Infrastructure\Controller;
 use App\Quotation\Application\Command\AddQuotationDetailCommand;
 use App\Quotation\Application\Command\EditQuotationDetailCommand;
 use App\Quotation\Application\Command\RemoveQuotationDetailCommand;
+use App\Quotation\Application\Query\QuotationQueryServiceInterface;
+use App\Quotation\Domain\Aggregate\Quotation;
 use App\Quotation\Domain\Repository\QuotationRepositoryInterface;
+use App\Quotation\Domain\ValueObject\QuotationDetail;
 use App\Quotation\Domain\ValueObject\QuotationStatus;
 use App\Quotation\Application\Command\CreateQuotationCommand;
 use App\Quotation\Application\Command\ChangeQuotationStatusCommand;
@@ -20,7 +23,7 @@ class QuotationController extends AbstractController
 {
     #[Route('/quotations', name: 'list_quotations_by_org', methods: ['GET'])]
     #[OA\Get(
-        summary: "List all quotations by organization (paginated)",
+        summary: "List all quotations by organization (paginated, application layer)",
         tags: ['Quotation'],
         parameters: [
             new OA\Parameter(
@@ -42,7 +45,7 @@ class QuotationController extends AbstractController
                 description: "Items per page (default: 20, max: 100)",
                 in: "query",
                 required: false,
-                schema: new OA\Schema(type: "integer", default: 20, maximum: 100, minimum: 1)
+                schema: new OA\Schema(type: "integer", default: 20, minimum: 1, maximum: 100)
             ),
             new OA\Parameter(
                 name: "orderBy",
@@ -70,8 +73,9 @@ class QuotationController extends AbstractController
                             type: "array",
                             items: new OA\Items(
                                 properties: [
-                                    new OA\Property(property: "id", type: "string"),
+                                    new OA\Property(property: "id", type: "string", nullable: true),
                                     new OA\Property(property: "requestInformationId", type: "string"),
+                                    new OA\Property(property: "organizationId", type: "string"),
                                     new OA\Property(
                                         property: "details",
                                         type: "array",
@@ -112,7 +116,7 @@ class QuotationController extends AbstractController
     )]
     public function listByOrg(
         Request $request,
-        QuotationRepositoryInterface $repo
+        QuotationQueryServiceInterface $queryService
     ): JsonResponse {
         $orgId = $request->headers->get('X-Org-Id');
         if (!$orgId) {
@@ -121,38 +125,45 @@ class QuotationController extends AbstractController
 
         $page      = max(1, (int) $request->query->get('page', 1));
         $perPage   = max(1, min(100, (int) $request->query->get('perPage', 20)));
-        $orderBy   = $request->query->get('orderBy', 'createdAt');
+        $orderBy   = (string) $request->query->get('orderBy', 'createdAt');
         $direction = strtoupper((string) $request->query->get('direction', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
 
-        // Este método debe existir en tu QuotationRepositoryInterface y su implementación
-        // debe devolver: ['items' => Quotation[], 'total' => int, 'page' => int, 'perPage' => int, 'pages' => int]
-        $result = $repo->paginateByOrgId($orgId, $page, $perPage, $orderBy, $direction);
+        // Llamada a la capa de aplicación (usa dominio por dentro).
+        // Este método debe devolver un DTO/resultado con:
+        //  - items: Quotation[] (dominio)
+        //  - total, page, perPage, pages
+        $result = $queryService->findByOrganizationPaginated($orgId, $page, $perPage, $orderBy, $direction);
 
-        $items = array_map(fn($quotation) => [
-            'id' => $quotation->getId(),
-            'requestInformationId' => $quotation->getRequestInformationId(),
-            'details' => array_map(fn($d) => [
-                'description' => $d->description,
-                'unitPrice'   => $d->unitPrice,
-                'quantity'    => $d->quantity,
-                'total'       => $d->total
-            ], $quotation->getDetails()),
-            'status' => $quotation->getStatus()->value,
-            'createdAt' => $quotation->getCreatedAt()->format('Y-m-d H:i:s'),
-            'updatedAt' => $quotation->getUpdatedAt()?->format('Y-m-d H:i:s'),
-            'deletedAt' => $quotation->getDeletedAt()?->format('Y-m-d H:i:s'),
-        ], $result['items'] ?? []);
+        $items = array_map(function (Quotation $q) {
+            return [
+                'id' => $q->getId(),
+                'requestInformationId' => $q->getRequestInformationId(),
+                'organizationId' => $q->getOrganizationId(),
+                'details' => array_map(function (QuotationDetail $d) {
+                    return [
+                        'description' => $d->description,
+                        'unitPrice'   => $d->unitPrice,
+                        'quantity'    => $d->quantity,
+                        'total'       => $d->total,
+                    ];
+                }, $q->getDetails()),
+                'status' => $q->getStatus()->value,
+                'createdAt' => $q->getCreatedAt()->format('Y-m-d H:i:s'),
+                'updatedAt' => $q->getUpdatedAt()?->format('Y-m-d H:i:s'),
+                'deletedAt' => $q->getDeletedAt()?->format('Y-m-d H:i:s'),
+            ];
+        }, $result->items ?? []);
 
         return $this->json([
             'items' => $items,
             'meta' => [
-                'total'     => $result['total'] ?? 0,
-                'page'      => $result['page'] ?? $page,
-                'perPage'   => $result['perPage'] ?? $perPage,
-                'pages'     => $result['pages'] ?? (int) ceil(($result['total'] ?? 0) / $perPage),
+                'total'     => $result->total ?? 0,
+                'page'      => $result->page ?? $page,
+                'perPage'   => $result->perPage ?? $perPage,
+                'pages'     => $result->pages ?? (int) ceil(($result->total ?? 0) / $perPage),
                 'orderBy'   => $orderBy,
                 'direction' => $direction,
-            ]
+            ],
         ]);
     }
 
@@ -194,6 +205,7 @@ class QuotationController extends AbstractController
         MessageBusInterface $commandBus
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
+        $organizationId = $request->headers->get('x-org-id');
 
         if (
             empty($data['requestInformationId']) ||
@@ -205,6 +217,7 @@ class QuotationController extends AbstractController
 
         $command = new CreateQuotationCommand(
             $data['requestInformationId'],
+            $organizationId,
             $data['details'],
             $data['status'] ?? null
         );
