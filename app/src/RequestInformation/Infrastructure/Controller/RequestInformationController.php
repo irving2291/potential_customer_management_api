@@ -5,11 +5,15 @@ use App\RequestInformation\Application\Command\AddRequestInformationStatusComman
 use App\RequestInformation\Application\Command\AddRequestNoteCommand;
 use App\RequestInformation\Application\Command\ChangeRequestStatusCommand;
 use App\RequestInformation\Application\Command\DeleteRequestNoteCommand;
+use App\RequestInformation\Application\Command\ReorderRequestInformationStatusesCommand;
+use App\RequestInformation\Application\Command\UpdateRequestInformationStatusCommand;
 use App\RequestInformation\Application\Command\UpdateRequestNoteCommand;
 use App\RequestInformation\Application\CommandHandler\AddRequestInformationStatusHandler;
 use App\RequestInformation\Application\CommandHandler\AddRequestNoteHandler;
 use App\RequestInformation\Application\CommandHandler\ChangeRequestStatusHandler;
 use App\RequestInformation\Application\CommandHandler\DeleteRequestNoteHandler;
+use App\RequestInformation\Application\CommandHandler\ReorderRequestInformationStatusesHandler;
+use App\RequestInformation\Application\CommandHandler\UpdateRequestInformationStatusHandler;
 use App\RequestInformation\Application\Query\GetRequestSummaryQuery;
 use App\RequestInformation\Domain\Entity\RequestInformationStatus;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
@@ -25,6 +29,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 use App\RequestInformation\Application\Command\CreateRequestInformationCommand;
 use OpenApi\Attributes as OA;
+use Symfony\Component\Routing\Requirement\Requirement;
 
 class RequestInformationController extends AbstractController
 {
@@ -482,7 +487,8 @@ class RequestInformationController extends AbstractController
         $data = array_map(fn($s) => [
             'id' => $s->getId(),
             'code' => $s->getCode(),
-            'name' => $s->getName()
+            'name' => $s->getName(),
+            'sort' => $s->getSort(),
         ], $status);
 
         return $this->json(['status' => $data]);
@@ -525,4 +531,130 @@ class RequestInformationController extends AbstractController
 
         return $this->json(['success' => true], 201);
     }
+
+    #[Route('/requests-information/status/{id}', name: 'update_request_status', requirements: ['id' => Requirement::UUID], methods: ['PATCH'])]
+    #[OA\Patch(
+        summary: "Actualizar un estado (code, name o sort)",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: "code", type: "string", nullable: true),
+                    new OA\Property(property: "name", type: "string", nullable: true),
+                    new OA\Property(property: "sort", type: "integer", nullable: true)
+                ]
+            )
+        ),
+        tags: ['RequestStatus'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "ID del estado",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Estado actualizado correctamente"),
+            new OA\Response(response: 400, description: "Datos inválidos"),
+            new OA\Response(response: 404, description: "Estado no encontrado")
+        ]
+    )]
+    public function updateStatus(
+        string $id,
+        Request $request,
+        UpdateRequestInformationStatusHandler $handler
+    ): JsonResponse {
+        $orgId = $request->headers->get('x-org-id');
+        if (!$orgId) {
+            return $this->json(['error' => true, 'message' => 'x-org-id header is required'], 400);
+        }
+
+        $data = json_decode($request->getContent(), true) ?? [];
+
+        // Nada que actualizar
+        if (!array_key_exists('code', $data) && !array_key_exists('name', $data) && !array_key_exists('sort', $data)) {
+            return $this->json(['error' => true, 'message' => 'Nothing to update'], 400);
+        }
+
+        $command = new UpdateRequestInformationStatusCommand(
+            $id,
+            $orgId,
+            $data['code'] ?? null,
+            $data['name'] ?? null,
+            isset($data['sort']) ? (int)$data['sort'] : null
+        );
+
+        $handler->__invoke($command);
+
+        return $this->json(['success' => true]);
+    }
+
+    #[Route('/requests-information/status/reorder', name: 'reorder_request_status', methods: ['PATCH'])]
+    #[OA\Patch(
+        summary: "Reordenar estados por drag & drop (bulk sort update)",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["items"],
+                properties: [
+                    new OA\Property(
+                        property: "items",
+                        type: "array",
+                        items: new OA\Items(
+                            required: ["id", "sort"],
+                            properties: [
+                                new OA\Property(property: "id", type: "string"),
+                                new OA\Property(property: "sort", type: "integer")
+                            ]
+                        )
+                    )
+                ]
+            )
+        ),
+        tags: ['RequestStatus'],
+        responses: [
+            new OA\Response(response: 200, description: "Orden actualizado"),
+            new OA\Response(response: 400, description: "Datos inválidos")
+        ]
+    )]
+    public function reorderStatus(
+        Request $request,
+        ReorderRequestInformationStatusesHandler $handler
+    ): JsonResponse {
+        $orgId = $request->headers->get('x-org-id');
+
+        if (!$orgId) {
+            return $this->json(['error' => true, 'message' => 'x-org-id header is required'], 400);
+        }
+
+        $payload = json_decode($request->getContent(), true) ?? [];
+        $items = $payload['items'] ?? null;
+
+        if (!is_array($items) || empty($items)) {
+            return $this->json(['error' => true, 'message' => 'items is required and must be a non-empty array'], 400);
+        }
+
+        // Normaliza: [{id, sort}]
+        $normalized = array_map(function ($row) {
+            if (!isset($row['id'], $row['sort'])) {
+                throw new \InvalidArgumentException('Each item must have id and sort');
+            }
+            return [
+                'id'   => (string)$row['id'],
+                'sort' => (int)$row['sort'],
+            ];
+        }, $items);
+
+        $command = new ReorderRequestInformationStatusesCommand(
+            $orgId,
+            $normalized
+        );
+
+        $handler->__invoke($command);
+
+        return $this->json(['success' => true]);
+    }
+
 }

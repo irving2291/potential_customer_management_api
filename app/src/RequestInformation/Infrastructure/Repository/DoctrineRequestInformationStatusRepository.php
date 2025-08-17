@@ -43,7 +43,8 @@ class DoctrineRequestInformationStatusRepository implements RequestInformationSt
             $entity->getCode(),
             $entity->getName(),
             $entity->isDefault(),
-            $entity->getOrganization()
+            $entity->getOrganization(),
+            $entity->getSort()
         );
     }
 
@@ -58,20 +59,95 @@ class DoctrineRequestInformationStatusRepository implements RequestInformationSt
 
     public function save(RequestInformationStatus $request): RequestInformationStatus
     {
-        $entity = null;
+        $repo = $this->em->getRepository(DoctrineRequestInformationStatusEntity::class);
+
         if ($request->getId()) {
-            $entity = $this->em->getRepository(DoctrineRequestInformationStatusEntity::class)
-                ->find($request->getId());
+            /** @var DoctrineRequestInformationStatusEntity|null $entity */
+            $entity = $repo->find($request->getId());
+            if (!$entity) {
+                // Si no existe en DB, creamos uno nuevo con el mismo ID (opcional) o lanzamos excepción
+                // throw new \DomainException('RequestInformationStatus not found for update.');
+                $entity = new DoctrineRequestInformationStatusEntity(
+                    $request->getCode(),
+                    $request->getName(),
+                    $request->getIsDefault(),
+                    $request->getOrganizationId()
+                );
+            }
+
+            // Sincronizar cambios desde dominio → entidad
+            $entity->setCode($request->getCode());
+            $entity->setName($request->getName());
+            $entity->setIsDefault($request->getIsDefault());
+            if (method_exists($entity, 'setSort') && method_exists($request, 'getSort')) {
+                $entity->setSort((int) $request->getSort());
+            }
         } else {
+            // Create
             $entity = new DoctrineRequestInformationStatusEntity(
                 $request->getCode(),
                 $request->getName(),
                 $request->getIsDefault(),
                 $request->getOrganizationId()
             );
+            if (method_exists($entity, 'setSort') && method_exists($request, 'getSort')) {
+                $entity->setSort((int) $request->getSort());
+            }
         }
+
         $this->em->persist($entity);
         $this->em->flush();
-        return $entity;
+
+        // 👇 Devolver **dominio**, no entidad Doctrine
+        return $this->mapToDomain($entity);
+    }
+
+
+    /** buscar por id y organización, devolviendo dominio */
+    public function findByIdAndOrganizationId(string $id, string $orgId): ?RequestInformationStatus
+    {
+        $repo = $this->em->getRepository(DoctrineRequestInformationStatusEntity::class);
+
+        $entity = $repo->findOneBy([
+            'id'             => $id,
+            'organizationId' => $orgId,
+        ]);
+
+        return $entity ? $this->mapToDomain($entity) : null;
+    }
+
+    /**
+     * actualizar sort en bulk (para drag & drop)
+     * $items = [['id' => string, 'sort' => int], ...]
+     */
+    public function bulkUpdateSort(string $orgId, array $items): void
+    {
+        if (empty($items)) {
+            return;
+        }
+
+        $repo = $this->em->getRepository(DoctrineRequestInformationStatusEntity::class);
+
+        foreach ($items as $row) {
+            if (!isset($row['id'], $row['sort'])) {
+                continue; // o lanza excepción si prefieres ser estricto
+            }
+
+            /** @var DoctrineRequestInformationStatusEntity|null $entity */
+            $entity = $repo->findOneBy([
+                'id'             => (string) $row['id'],
+                'organizationId' => $orgId,
+            ]);
+
+            if ($entity === null) {
+                continue; // o lanza DomainException si prefieres fallar
+            }
+
+            // asumimos que la entidad Doctrine tiene setSort(int $sort)
+            $entity->setSort((int) $row['sort']);
+            $this->em->persist($entity);
+        }
+
+        $this->em->flush();
     }
 }

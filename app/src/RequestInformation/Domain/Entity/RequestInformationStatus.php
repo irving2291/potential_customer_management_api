@@ -9,7 +9,8 @@ class RequestInformationStatus
         private string          $code,
         private string          $name,
         private string          $isDefault,
-        public string           $organizationId
+        public string           $organizationId,
+        private string           $sort,
     ) {}
 
     public function getId(): string { return $this->id; }
@@ -22,6 +23,8 @@ class RequestInformationStatus
 
     public function getOrganizationId(): string { return $this->organizationId; }
 
+    public function getSort(): string { return $this->sort; }
+
     public function setCode(string $code): self { $this->code = $code; return $this; }
 
     public function setName(string $name): self { $this->name = $name; return $this; }
@@ -29,4 +32,6 @@ class RequestInformationStatus
     public function setIsDefault(string $isDefault): self { $this->isDefault = $isDefault; return $this; }
 
     public function setOrganizationId(string $organizationId): self { $this->organizationId = $organizationId; return $this; }
+
+    public function setSort(string $sort): self { $this->sort = $sort; return $this; }
 }
