@@ -44,7 +44,8 @@ class RequestInformationMapper
                 $statusEntity->getCode(),
                 $statusEntity->getName(),
                 $statusEntity->isDefault(),
-                $statusEntity->getOrganization()
+                $statusEntity->getOrganization(),
+                $statusEntity->getSort()
             ),
             $entity->getFirstName(),
             $entity->getLastName(),
