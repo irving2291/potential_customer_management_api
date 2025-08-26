@@ -154,6 +154,8 @@
       <path value="$PROJECT_DIR$/app/vendor/friends-of-behat/symfony-extension" />
       <path value="$PROJECT_DIR$/app/vendor/doctrine/data-fixtures" />
       <path value="$PROJECT_DIR$/app/vendor/doctrine/doctrine-fixtures-bundle" />
+      <path value="$PROJECT_DIR$/app/vendor/symfony/http-client-contracts" />
+      <path value="$PROJECT_DIR$/app/vendor/symfony/http-client" />
     </include_path>
   </component>
   <component name="PhpInterpreters">

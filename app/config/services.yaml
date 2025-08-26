@@ -4,6 +4,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    dynamo_events.base_url: '%env(DYNAMO_EVENTS_BASE_URL)%'
 
 services:
     App\Shared\Infrastructure\ApiExceptionSubscriber:
@@ -12,24 +13,20 @@ services:
     App\Shared\Infrastructure\OrganizationHeaderSubscriber:
         tags:
             - { name: kernel.event_subscriber }
-    App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface:
-        '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestInformationRepository'
-    App\PotentialCustomer\Domain\Repository\PotentialCustomerRepositoryInterface:
-        '@App\PotentialCustomer\Infrastructure\Repository\DoctrinePotentialCustomerRepository'
-    App\RequestInformation\Domain\Repository\RequestNoteRepositoryInterface:
-        '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestNoteRepository'
-    App\Quotation\Domain\Repository\QuotationRepositoryInterface:
-        '@App\Quotation\Infrastructure\Repository\DoctrineQuotationRepository'
-    App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface:
-        '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestInformationStatusRepository'
 
-    App\Quotation\Application\Query\QuotationQueryServiceInterface:
-        '@App\Quotation\Application\UseCase\ListQuotationsByOrg\QuotationQueryServiceHandler'
+    App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface: '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestInformationRepository'
+    App\PotentialCustomer\Domain\Repository\PotentialCustomerRepositoryInterface: '@App\PotentialCustomer\Infrastructure\Repository\DoctrinePotentialCustomerRepository'
+    App\RequestInformation\Domain\Repository\RequestNoteRepositoryInterface: '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestNoteRepository'
+    App\Quotation\Domain\Repository\QuotationRepositoryInterface: '@App\Quotation\Infrastructure\Repository\DoctrineQuotationRepository'
+    App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface: '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestInformationStatusRepository'
+
+    App\Quotation\Application\Query\QuotationQueryServiceInterface: '@App\Quotation\Application\UseCase\ListQuotationsByOrg\QuotationQueryServiceHandler'
 
     App\RequestInformation\Application\CommandHandler\:
         resource: '../src/RequestInformation/Application/CommandHandler/'
         autowire: true
         autoconfigure: true
+
     # default configuration for services in *this* file
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
@@ -40,5 +37,31 @@ services:
     App\:
         resource: '../src/'
 
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
+    # -------------------------
+    # 🔽 AÑADIDOS CLAVE (al final)
+    # -------------------------
+
+    # Proveedor de access tokens (grant: client_credentials)
+    App\Security\AccessTokenProvider:
+        arguments:
+            $http: '@http_client'
+            $cache: '@cache.app'
+            $tokenUrl: '%env(IDP_TOKEN_URL)%'            # p.ej. https://idp.tu-dominio.com/oauth/token
+            $clientId: '%env(IDP_CLIENT_ID)%'            # p.ej. crm-symfony
+            $clientSecret: '%env(IDP_CLIENT_SECRET)%'    # secreto del client
+            $audience: 'crm-service'
+            $scopes: 'events:write events:read'
+
+    # Adaptador que publica eventos a tu API Gateway (/events)
+    App\Events\Infrastructure\DynamoEventsApiAdapter:
+        autowire: true
+        autoconfigure: true
+        arguments:
+            $http: '@http_client'
+            $tokens: '@App\Security\AccessTokenProvider'
+            $baseUrl: '%dynamo_events.base_url%'
+            $tenantHeader: 'X-Tenant-Id'
+            $traceHeader: 'X-Trace-Id'
+
+    # Alias del puerto → adaptador
+    App\Common\Infrastructure\EventPublisher: '@App\Events\Infrastructure\DynamoEventsApiAdapter'
