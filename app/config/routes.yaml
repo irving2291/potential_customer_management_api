@@ -13,6 +13,26 @@ common_controllers:
         path: ../src/Common/Infrastructure/Controller/
         namespace: App\Common\Infrastructure\Controller
     type: attribute
+activation_controllers:
+    resource:
+        path: ../src/Activation/Infrastructure/Controller/
+        namespace: App\Activation\Infrastructure\Controller
+    type: attribute
+assignee_controllers:
+    resource:
+        path: ../src/Assignee/Infrastructure/Controller/
+        namespace: App\Assignee\Infrastructure\Controller
+    type: attribute
+landing_page_controllers:
+    resource:
+        path: ../src/LandingPage/Infrastructure/Controller/
+        namespace: App\LandingPage\Infrastructure\Controller
+    type: attribute
+potential_customer_controllers:
+    resource:
+        path: ../src/PotentialCustomer/Infrastructure/Controller/
+        namespace: App\PotentialCustomer\Infrastructure\Controller
+    type: attribute
 
 app.swagger_ui:
     path: /api/doc
