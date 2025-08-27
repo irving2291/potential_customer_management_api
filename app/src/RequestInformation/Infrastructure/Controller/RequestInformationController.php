@@ -657,4 +657,309 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
+    #[Route('/requests-information/assignment-rules', name: 'list_assignment_rules', methods: ['GET'])]
+    #[OA\Get(
+        summary: "Get all assignment rules for the organization",
+        tags: ['AssignmentRules'],
+        parameters: [
+            new OA\Parameter(
+                name: "X-Org-Id",
+                description: "Organization ID",
+                in: "header",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "List of assignment rules",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(
+                            property: "data",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "id", type: "string"),
+                                    new OA\Property(property: "name", type: "string"),
+                                    new OA\Property(property: "description", type: "string", nullable: true),
+                                    new OA\Property(property: "active", type: "boolean"),
+                                    new OA\Property(property: "priority", type: "integer"),
+                                    new OA\Property(property: "conditions", type: "array", items: new OA\Items(type: "object")),
+                                    new OA\Property(property: "assignmentType", type: "string"),
+                                    new OA\Property(property: "assigneeIds", type: "array", items: new OA\Items(type: "string")),
+                                    new OA\Property(property: "createdAt", type: "string", format: "date-time"),
+                                    new OA\Property(property: "updatedAt", type: "string", format: "date-time")
+                                ]
+                            )
+                        )
+                    ]
+                )
+            )
+        ]
+    )]
+    public function listAssignmentRules(Request $request): JsonResponse
+    {
+        $organizationId = $request->headers->get('X-Org-Id');
+        if (!$organizationId) {
+            return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
+        }
+
+        // Mock data for now - in real implementation, you would fetch from repository
+        $mockRules = [
+            [
+                'id' => '1',
+                'name' => 'Distribución Equitativa',
+                'description' => 'Asigna peticiones de forma equitativa entre todos los representantes activos',
+                'active' => true,
+                'priority' => 1,
+                'conditions' => [],
+                'assignmentType' => 'round_robin',
+                'assigneeIds' => ['1', '2', '3'],
+                'createdAt' => '2024-01-01T10:00:00Z',
+                'updatedAt' => '2024-01-01T10:00:00Z'
+            ],
+            [
+                'id' => '2',
+                'name' => 'Peticiones VIP',
+                'description' => 'Asigna peticiones de alto valor al manager',
+                'active' => true,
+                'priority' => 2,
+                'conditions' => [
+                    [
+                        'field' => 'amount',
+                        'operator' => 'greater_than',
+                        'value' => 10000
+                    ]
+                ],
+                'assignmentType' => 'manual',
+                'assigneeIds' => ['3'],
+                'createdAt' => '2024-01-01T10:00:00Z',
+                'updatedAt' => '2024-01-01T10:00:00Z'
+            ]
+        ];
+
+        return $this->json(['data' => $mockRules]);
+    }
+
+    #[Route('/requests-information/assignment-rules', name: 'create_assignment_rule', methods: ['POST'])]
+    #[OA\Post(
+        summary: "Create a new assignment rule",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["name", "assignmentType", "assigneeIds"],
+                properties: [
+                    new OA\Property(property: "name", type: "string"),
+                    new OA\Property(property: "description", type: "string", nullable: true),
+                    new OA\Property(property: "active", type: "boolean", default: true),
+                    new OA\Property(property: "priority", type: "integer", default: 1),
+                    new OA\Property(property: "conditions", type: "array", items: new OA\Items(type: "object")),
+                    new OA\Property(property: "assignmentType", type: "string", enum: ["round_robin", "load_balanced", "skill_based", "manual"]),
+                    new OA\Property(property: "assigneeIds", type: "array", items: new OA\Items(type: "string"))
+                ]
+            )
+        ),
+        tags: ['AssignmentRules'],
+        parameters: [
+            new OA\Parameter(
+                name: "X-Org-Id",
+                description: "Organization ID",
+                in: "header",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: "Assignment rule created successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "id", type: "string"),
+                        new OA\Property(property: "name", type: "string"),
+                        new OA\Property(property: "description", type: "string", nullable: true),
+                        new OA\Property(property: "active", type: "boolean"),
+                        new OA\Property(property: "priority", type: "integer"),
+                        new OA\Property(property: "conditions", type: "array", items: new OA\Items(type: "object")),
+                        new OA\Property(property: "assignmentType", type: "string"),
+                        new OA\Property(property: "assigneeIds", type: "array", items: new OA\Items(type: "string")),
+                        new OA\Property(property: "createdAt", type: "string", format: "date-time"),
+                        new OA\Property(property: "updatedAt", type: "string", format: "date-time")
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Invalid input data")
+        ]
+    )]
+    public function createAssignmentRule(Request $request): JsonResponse
+    {
+        $organizationId = $request->headers->get('X-Org-Id');
+        if (!$organizationId) {
+            return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        if (!$data) {
+            return $this->json(['error' => true, 'message' => 'Invalid JSON data'], 400);
+        }
+
+        // Validate required fields
+        if (empty($data['name']) || empty($data['assignmentType']) || empty($data['assigneeIds'])) {
+            return $this->json(['error' => true, 'message' => 'Missing required fields: name, assignmentType, assigneeIds'], 400);
+        }
+
+        // Mock creation - in real implementation, you would save to repository
+        $newRule = [
+            'id' => uniqid(),
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'active' => $data['active'] ?? true,
+            'priority' => $data['priority'] ?? 1,
+            'conditions' => $data['conditions'] ?? [],
+            'assignmentType' => $data['assignmentType'],
+            'assigneeIds' => $data['assigneeIds'],
+            'createdAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:s\Z'),
+            'updatedAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:s\Z')
+        ];
+
+        return $this->json($newRule, 201);
+    }
+
+    #[Route('/requests-information/assignment-rules/{id}', name: 'update_assignment_rule', methods: ['PATCH'])]
+    #[OA\Patch(
+        summary: "Update an assignment rule",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: "name", type: "string", nullable: true),
+                    new OA\Property(property: "description", type: "string", nullable: true),
+                    new OA\Property(property: "active", type: "boolean", nullable: true),
+                    new OA\Property(property: "priority", type: "integer", nullable: true),
+                    new OA\Property(property: "conditions", type: "array", items: new OA\Items(type: "object"), nullable: true),
+                    new OA\Property(property: "assignmentType", type: "string", enum: ["round_robin", "load_balanced", "skill_based", "manual"], nullable: true),
+                    new OA\Property(property: "assigneeIds", type: "array", items: new OA\Items(type: "string"), nullable: true)
+                ]
+            )
+        ),
+        tags: ['AssignmentRules'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "Assignment rule ID",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "X-Org-Id",
+                description: "Organization ID",
+                in: "header",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Assignment rule updated successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "id", type: "string"),
+                        new OA\Property(property: "name", type: "string"),
+                        new OA\Property(property: "description", type: "string", nullable: true),
+                        new OA\Property(property: "active", type: "boolean"),
+                        new OA\Property(property: "priority", type: "integer"),
+                        new OA\Property(property: "conditions", type: "array", items: new OA\Items(type: "object")),
+                        new OA\Property(property: "assignmentType", type: "string"),
+                        new OA\Property(property: "assigneeIds", type: "array", items: new OA\Items(type: "string")),
+                        new OA\Property(property: "createdAt", type: "string", format: "date-time"),
+                        new OA\Property(property: "updatedAt", type: "string", format: "date-time")
+                    ]
+                )
+            ),
+            new OA\Response(response: 404, description: "Assignment rule not found"),
+            new OA\Response(response: 400, description: "Invalid input data")
+        ]
+    )]
+    public function updateAssignmentRule(string $id, Request $request): JsonResponse
+    {
+        $organizationId = $request->headers->get('X-Org-Id');
+        if (!$organizationId) {
+            return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        if (!$data) {
+            return $this->json(['error' => true, 'message' => 'Invalid JSON data'], 400);
+        }
+
+        // Mock update - in real implementation, you would find and update in repository
+        $updatedRule = [
+            'id' => $id,
+            'name' => $data['name'] ?? 'Updated Rule',
+            'description' => $data['description'] ?? null,
+            'active' => $data['active'] ?? true,
+            'priority' => $data['priority'] ?? 1,
+            'conditions' => $data['conditions'] ?? [],
+            'assignmentType' => $data['assignmentType'] ?? 'round_robin',
+            'assigneeIds' => $data['assigneeIds'] ?? [],
+            'createdAt' => '2024-01-01T10:00:00Z',
+            'updatedAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:s\Z')
+        ];
+
+        return $this->json($updatedRule);
+    }
+
+    #[Route('/requests-information/assignment-rules/{id}', name: 'delete_assignment_rule', methods: ['DELETE'])]
+    #[OA\Delete(
+        summary: "Delete an assignment rule",
+        tags: ['AssignmentRules'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "Assignment rule ID",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "X-Org-Id",
+                description: "Organization ID",
+                in: "header",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Assignment rule deleted successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean", example: true),
+                        new OA\Property(property: "message", type: "string", example: "Assignment rule deleted successfully")
+                    ]
+                )
+            ),
+            new OA\Response(response: 404, description: "Assignment rule not found")
+        ]
+    )]
+    public function deleteAssignmentRule(string $id, Request $request): JsonResponse
+    {
+        $organizationId = $request->headers->get('X-Org-Id');
+        if (!$organizationId) {
+            return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
+        }
+
+        // Mock deletion - in real implementation, you would find and delete from repository
+        // For now, we'll just return success
+        return $this->json([
+            'success' => true,
+            'message' => 'Assignment rule deleted successfully'
+        ]);
+    }
+
 }

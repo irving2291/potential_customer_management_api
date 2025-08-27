@@ -2,6 +2,8 @@
 
 namespace App\PotentialCustomer\Infrastructure\Controller;
 
+use App\PotentialCustomer\Domain\Aggregate\PotentialCustomer;
+use App\PotentialCustomer\Domain\Entity\Email;
 use App\PotentialCustomer\Domain\Repository\PotentialCustomerRepositoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -11,6 +13,12 @@ use OpenApi\Attributes as OA;
 
 class PotentialCustomerController extends AbstractController
 {
+    private PotentialCustomerRepositoryInterface $potentialCustomerRepository;
+
+    public function __construct(PotentialCustomerRepositoryInterface $potentialCustomerRepository)
+    {
+        $this->potentialCustomerRepository = $potentialCustomerRepository;
+    }
     #[Route('/accounts', name: 'list_accounts', methods: ['GET'])]
     #[OA\Get(
         summary: "List all accounts (potential customers) by organization",
@@ -127,130 +135,63 @@ class PotentialCustomerController extends AbstractController
 
         $page = max(1, (int) $request->query->get('page', 1));
         $perPage = max(1, min(100, (int) $request->query->get('perPage', 20)));
-        $type = $request->query->get('type');
-        $status = $request->query->get('status');
-        $priority = $request->query->get('priority');
-        $assignedTo = $request->query->get('assignedTo');
-        $search = $request->query->get('search');
-
-        // Mock data compatible with frontend expectations
-        $mockAccounts = [
-            [
-                'id' => '1',
-                'type' => 'person',
-                'status' => 'client',
-                'firstName' => 'Juan',
-                'lastName' => 'Pérez',
-                'companyName' => null,
-                'email' => 'juan.perez@email.com',
-                'phone' => '+593 99 123 4567',
-                'address' => 'Av. Amazonas 123',
-                'city' => 'Quito',
-                'country' => 'Ecuador',
-                'website' => null,
-                'industry' => null,
-                'tags' => ['VIP', 'Referido'],
-                'priority' => 'high',
-                'assignedTo' => 'user1',
-                'assignedToName' => 'María García',
-                'totalValue' => 15000,
-                'potentialValue' => 25000,
-                'lastContactDate' => '2024-01-15',
-                'requestsCount' => 3,
-                'quotationsCount' => 2,
-                'conversationsCount' => 5,
-                'createdAt' => '2024-01-01T00:00:00Z',
-                'updatedAt' => '2024-01-15T00:00:00Z',
-                'convertedAt' => '2024-01-10T00:00:00Z'
-            ],
-            [
-                'id' => '2',
-                'type' => 'company',
-                'status' => 'prospect',
-                'firstName' => null,
-                'lastName' => null,
-                'companyName' => 'TechCorp S.A.',
-                'email' => 'contacto@techcorp.com',
-                'phone' => '+593 2 234 5678',
-                'address' => 'Av. República 456',
-                'city' => 'Guayaquil',
-                'country' => 'Ecuador',
-                'website' => 'https://techcorp.com',
-                'industry' => 'Tecnología',
-                'tags' => ['Empresa', 'Software'],
-                'priority' => 'medium',
-                'assignedTo' => 'user2',
-                'assignedToName' => 'Carlos López',
-                'totalValue' => 0,
-                'potentialValue' => 50000,
-                'lastContactDate' => '2024-01-20',
-                'requestsCount' => 1,
-                'quotationsCount' => 1,
-                'conversationsCount' => 3,
-                'createdAt' => '2024-01-05T00:00:00Z',
-                'updatedAt' => '2024-01-20T00:00:00Z',
-                'convertedAt' => null
-            ],
-            [
-                'id' => '3',
-                'type' => 'person',
-                'status' => 'prospect',
-                'firstName' => 'Ana',
-                'lastName' => 'Rodríguez',
-                'companyName' => null,
-                'email' => 'ana.rodriguez@email.com',
-                'phone' => '+593 98 765 4321',
-                'address' => 'Calle 10 de Agosto 789',
-                'city' => 'Cuenca',
-                'country' => 'Ecuador',
-                'website' => null,
-                'industry' => null,
-                'tags' => ['Nuevo', 'Web'],
-                'priority' => 'low',
-                'assignedTo' => 'user1',
-                'assignedToName' => 'María García',
-                'totalValue' => 0,
-                'potentialValue' => 8000,
-                'lastContactDate' => '2024-01-18',
-                'requestsCount' => 1,
-                'quotationsCount' => 0,
-                'conversationsCount' => 2,
-                'createdAt' => '2024-01-10T00:00:00Z',
-                'updatedAt' => '2024-01-18T00:00:00Z',
-                'convertedAt' => null
-            ]
-        ];
-
-        // Apply filters
-        $filteredAccounts = $mockAccounts;
-        if ($type && $type !== 'all') {
-            $filteredAccounts = array_filter($filteredAccounts, fn($a) => $a['type'] === $type);
+        
+        // Build filters array
+        $filters = [];
+        if ($type = $request->query->get('type')) {
+            $filters['type'] = $type;
         }
-        if ($status && $status !== 'all') {
-            $filteredAccounts = array_filter($filteredAccounts, fn($a) => $a['status'] === $status);
+        if ($status = $request->query->get('status')) {
+            $filters['status'] = $status;
         }
-        if ($priority) {
-            $filteredAccounts = array_filter($filteredAccounts, fn($a) => $a['priority'] === $priority);
+        if ($priority = $request->query->get('priority')) {
+            $filters['priority'] = $priority;
         }
-        if ($assignedTo) {
-            $filteredAccounts = array_filter($filteredAccounts, fn($a) => $a['assignedTo'] === $assignedTo);
+        if ($assignedTo = $request->query->get('assignedTo')) {
+            $filters['assignedTo'] = $assignedTo;
         }
-        if ($search) {
-            $search = strtolower($search);
-            $filteredAccounts = array_filter($filteredAccounts, fn($a) => 
-                str_contains(strtolower($a['firstName'] ?? ''), $search) ||
-                str_contains(strtolower($a['lastName'] ?? ''), $search) ||
-                str_contains(strtolower($a['companyName'] ?? ''), $search) ||
-                str_contains(strtolower($a['email']), $search)
-            );
+        if ($search = $request->query->get('search')) {
+            $filters['search'] = $search;
         }
 
-        $total = count($filteredAccounts);
-        $offset = ($page - 1) * $perPage;
-        $paginatedAccounts = array_slice($filteredAccounts, $offset, $perPage);
+        // Get accounts from repository
+        $accounts = $this->potentialCustomerRepository->findByOrganizationId($organizationId, $filters, $page, $perPage);
+        $total = $this->potentialCustomerRepository->countByOrganizationId($organizationId, $filters);
+
+        // Convert domain objects to array format
+        $data = array_map(function (PotentialCustomer $customer) {
+            return [
+                'id' => $customer->getId(),
+                'type' => $customer->getType(),
+                'status' => $customer->getStatus(),
+                'firstName' => $customer->getFirstName(),
+                'lastName' => $customer->getLastName(),
+                'companyName' => $customer->getCompanyName(),
+                'email' => $customer->getPrimaryEmail(),
+                'phone' => $customer->getPhone(),
+                'address' => $customer->getAddress(),
+                'city' => $customer->getCity(),
+                'country' => $customer->getCountry(),
+                'website' => $customer->getWebsite(),
+                'industry' => $customer->getIndustry(),
+                'tags' => $customer->getTags(),
+                'priority' => $customer->getPriority(),
+                'assignedTo' => $customer->getAssignedTo(),
+                'assignedToName' => $customer->getAssignedToName(),
+                'totalValue' => $customer->getTotalValue(),
+                'potentialValue' => $customer->getPotentialValue(),
+                'lastContactDate' => $customer->getLastContactDate(),
+                'requestsCount' => $customer->getRequestsCount(),
+                'quotationsCount' => $customer->getQuotationsCount(),
+                'conversationsCount' => $customer->getConversationsCount(),
+                'createdAt' => $customer->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
+                'updatedAt' => $customer->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z'),
+                'convertedAt' => $customer->getConvertedAt()?->format('Y-m-d\TH:i:s\Z')
+            ];
+        }, $accounts);
 
         return $this->json([
-            'data' => array_values($paginatedAccounts),
+            'data' => $data,
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage
@@ -311,49 +252,18 @@ class PotentialCustomerController extends AbstractController
             return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
         }
 
-        // Mock statistics compatible with frontend expectations
-        return $this->json([
-            'totalAccounts' => 150,
-            'totalClients' => 45,
-            'totalProspects' => 105,
-            'conversionRate' => 0.30,
-            'totalValue' => 450000,
-            'potentialValue' => 1200000,
-            'byType' => [
-                'person' => 90,
-                'company' => 60
-            ],
-            'byPriority' => [
-                'low' => 50,
-                'medium' => 70,
-                'high' => 30
-            ],
-            'byAssignee' => [
-                'user1' => 75,
-                'user2' => 45,
-                'user3' => 30
-            ],
-            'recentActivity' => [
-                [
-                    'id' => '1',
-                    'accountId' => '1',
-                    'type' => 'status_changed',
-                    'description' => 'Convertido de prospecto a cliente',
-                    'performedBy' => 'user1',
-                    'performedByName' => 'María García',
-                    'createdAt' => '2024-01-10T00:00:00Z'
-                ],
-                [
-                    'id' => '2',
-                    'accountId' => '2',
-                    'type' => 'contact_made',
-                    'description' => 'Llamada telefónica realizada',
-                    'performedBy' => 'user2',
-                    'performedByName' => 'Carlos López',
-                    'createdAt' => '2024-01-20T00:00:00Z'
-                ]
-            ]
-        ]);
+        // Get statistics from repository
+        $stats = $this->potentialCustomerRepository->getStatsByOrganizationId($organizationId);
+
+        // Add mock data for fields not yet implemented in repository
+        $stats['byAssignee'] = [
+            'user1' => 0,
+            'user2' => 0,
+            'user3' => 0
+        ];
+        $stats['recentActivity'] = [];
+
+        return $this->json($stats);
     }
 
     #[Route('/accounts/{id}', name: 'get_account', methods: ['GET'])]
@@ -376,39 +286,40 @@ class PotentialCustomerController extends AbstractController
     )]
     public function getAccount(string $id): JsonResponse
     {
-        // Mock data - in real implementation, use PotentialCustomerRepositoryInterface
-        if ($id === '1') {
-            return $this->json([
-                'id' => '1',
-                'type' => 'person',
-                'status' => 'client',
-                'firstName' => 'Juan',
-                'lastName' => 'Pérez',
-                'companyName' => null,
-                'email' => 'juan.perez@email.com',
-                'phone' => '+593 99 123 4567',
-                'address' => 'Av. Amazonas 123',
-                'city' => 'Quito',
-                'country' => 'Ecuador',
-                'website' => null,
-                'industry' => null,
-                'tags' => ['VIP', 'Referido'],
-                'priority' => 'high',
-                'assignedTo' => 'user1',
-                'assignedToName' => 'María García',
-                'totalValue' => 15000,
-                'potentialValue' => 25000,
-                'lastContactDate' => '2024-01-15',
-                'requestsCount' => 3,
-                'quotationsCount' => 2,
-                'conversationsCount' => 5,
-                'createdAt' => '2024-01-01T00:00:00Z',
-                'updatedAt' => '2024-01-15T00:00:00Z',
-                'convertedAt' => '2024-01-10T00:00:00Z'
-            ]);
+        $customer = $this->potentialCustomerRepository->findById($id);
+        
+        if (!$customer) {
+            return $this->json(['error' => true, 'message' => 'Account not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Account not found'], 404);
+        return $this->json([
+            'id' => $customer->getId(),
+            'type' => $customer->getType(),
+            'status' => $customer->getStatus(),
+            'firstName' => $customer->getFirstName(),
+            'lastName' => $customer->getLastName(),
+            'companyName' => $customer->getCompanyName(),
+            'email' => $customer->getPrimaryEmail(),
+            'phone' => $customer->getPhone(),
+            'address' => $customer->getAddress(),
+            'city' => $customer->getCity(),
+            'country' => $customer->getCountry(),
+            'website' => $customer->getWebsite(),
+            'industry' => $customer->getIndustry(),
+            'tags' => $customer->getTags(),
+            'priority' => $customer->getPriority(),
+            'assignedTo' => $customer->getAssignedTo(),
+            'assignedToName' => $customer->getAssignedToName(),
+            'totalValue' => $customer->getTotalValue(),
+            'potentialValue' => $customer->getPotentialValue(),
+            'lastContactDate' => $customer->getLastContactDate(),
+            'requestsCount' => $customer->getRequestsCount(),
+            'quotationsCount' => $customer->getQuotationsCount(),
+            'conversationsCount' => $customer->getConversationsCount(),
+            'createdAt' => $customer->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
+            'updatedAt' => $customer->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z'),
+            'convertedAt' => $customer->getConvertedAt()?->format('Y-m-d\TH:i:s\Z')
+        ]);
     }
 
     #[Route('/accounts', name: 'create_account', methods: ['POST'])]
@@ -451,33 +362,52 @@ class PotentialCustomerController extends AbstractController
             return $this->json(['error' => true, 'message' => 'Missing required fields'], 400);
         }
 
-        // Mock creation - in real implementation, create PotentialCustomer
-        $accountId = uniqid();
-        $mockAccount = [
-            'id' => $accountId,
-            'type' => $data['type'],
-            'status' => 'prospect',
-            'firstName' => $data['firstName'] ?? null,
-            'lastName' => $data['lastName'] ?? null,
-            'companyName' => $data['companyName'] ?? null,
-            'email' => $data['email'],
-            'phone' => $data['phone'],
-            'city' => $data['city'] ?? null,
-            'priority' => $data['priority'],
-            'assignedTo' => $data['assignedTo'] ?? null,
-            'assignedToName' => $data['assignedToName'] ?? null,
-            'totalValue' => 0,
-            'potentialValue' => 0,
-            'lastContactDate' => null,
-            'requestsCount' => 0,
-            'quotationsCount' => 0,
-            'conversationsCount' => 0,
-            'createdAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:s\Z'),
-            'updatedAt' => null,
-            'convertedAt' => null
-        ];
+        // Create email entity
+        $emails = [new Email($data['email'])];
 
-        return $this->json($mockAccount, 201);
+        // Create new potential customer
+        $accountId = uniqid();
+        $customer = new PotentialCustomer(
+            $accountId,
+            $data['type'],
+            $organizationId,
+            $emails,
+            $data['phone'],
+            $data['priority'],
+            $data['firstName'] ?? null,
+            $data['lastName'] ?? null,
+            $data['companyName'] ?? null,
+            $data['city'] ?? null,
+            $data['assignedTo'] ?? null,
+            $data['assignedToName'] ?? null
+        );
+
+        // Save to repository
+        $this->potentialCustomerRepository->save($customer);
+
+        return $this->json([
+            'id' => $customer->getId(),
+            'type' => $customer->getType(),
+            'status' => $customer->getStatus(),
+            'firstName' => $customer->getFirstName(),
+            'lastName' => $customer->getLastName(),
+            'companyName' => $customer->getCompanyName(),
+            'email' => $customer->getPrimaryEmail(),
+            'phone' => $customer->getPhone(),
+            'city' => $customer->getCity(),
+            'priority' => $customer->getPriority(),
+            'assignedTo' => $customer->getAssignedTo(),
+            'assignedToName' => $customer->getAssignedToName(),
+            'totalValue' => $customer->getTotalValue(),
+            'potentialValue' => $customer->getPotentialValue(),
+            'lastContactDate' => $customer->getLastContactDate(),
+            'requestsCount' => $customer->getRequestsCount(),
+            'quotationsCount' => $customer->getQuotationsCount(),
+            'conversationsCount' => $customer->getConversationsCount(),
+            'createdAt' => $customer->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
+            'updatedAt' => $customer->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z'),
+            'convertedAt' => $customer->getConvertedAt()?->format('Y-m-d\TH:i:s\Z')
+        ], 201);
     }
 
     #[Route('/accounts/{id}', name: 'update_account', methods: ['PUT'])]
@@ -500,36 +430,112 @@ class PotentialCustomerController extends AbstractController
     )]
     public function updateAccount(string $id, Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        $customer = $this->potentialCustomerRepository->findById($id);
         
-        // Mock update
-        if ($id === '1') {
-            return $this->json([
-                'id' => $id,
-                'type' => $data['type'] ?? 'person',
-                'status' => 'client',
-                'firstName' => $data['firstName'] ?? 'Juan',
-                'lastName' => $data['lastName'] ?? 'Pérez',
-                'companyName' => $data['companyName'] ?? null,
-                'email' => $data['email'] ?? 'juan.perez@email.com',
-                'phone' => $data['phone'] ?? '+593 99 123 4567',
-                'city' => $data['city'] ?? 'Quito',
-                'priority' => $data['priority'] ?? 'high',
-                'assignedTo' => $data['assignedTo'] ?? 'user1',
-                'assignedToName' => $data['assignedToName'] ?? 'María García',
-                'totalValue' => 15000,
-                'potentialValue' => 25000,
-                'lastContactDate' => '2024-01-15',
-                'requestsCount' => 3,
-                'quotationsCount' => 2,
-                'conversationsCount' => 5,
-                'createdAt' => '2024-01-01T00:00:00Z',
-                'updatedAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:s\Z'),
-                'convertedAt' => '2024-01-10T00:00:00Z'
-            ]);
+        if (!$customer) {
+            return $this->json(['error' => true, 'message' => 'Account not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Account not found'], 404);
+        $data = json_decode($request->getContent(), true);
+        
+        // Update customer properties
+        if (isset($data['type'])) {
+            $customer->setType($data['type']);
+        }
+        if (isset($data['firstName'])) {
+            $customer->setFirstName($data['firstName']);
+        }
+        if (isset($data['lastName'])) {
+            $customer->setLastName($data['lastName']);
+        }
+        if (isset($data['companyName'])) {
+            $customer->setCompanyName($data['companyName']);
+        }
+        if (isset($data['email'])) {
+            $customer->setEmails([new Email($data['email'])]);
+        }
+        if (isset($data['phone'])) {
+            $customer->setPhone($data['phone']);
+        }
+        if (isset($data['address'])) {
+            $customer->setAddress($data['address']);
+        }
+        if (isset($data['city'])) {
+            $customer->setCity($data['city']);
+        }
+        if (isset($data['country'])) {
+            $customer->setCountry($data['country']);
+        }
+        if (isset($data['website'])) {
+            $customer->setWebsite($data['website']);
+        }
+        if (isset($data['industry'])) {
+            $customer->setIndustry($data['industry']);
+        }
+        if (isset($data['tags'])) {
+            $customer->setTags($data['tags']);
+        }
+        if (isset($data['priority'])) {
+            $customer->setPriority($data['priority']);
+        }
+        if (isset($data['assignedTo'])) {
+            $customer->setAssignedTo($data['assignedTo']);
+        }
+        if (isset($data['assignedToName'])) {
+            $customer->setAssignedToName($data['assignedToName']);
+        }
+        if (isset($data['totalValue'])) {
+            $customer->setTotalValue($data['totalValue']);
+        }
+        if (isset($data['potentialValue'])) {
+            $customer->setPotentialValue($data['potentialValue']);
+        }
+        if (isset($data['lastContactDate'])) {
+            $customer->setLastContactDate($data['lastContactDate']);
+        }
+
+        // Handle status changes
+        if (isset($data['status'])) {
+            if ($data['status'] === 'client' && $customer->getStatus() !== 'client') {
+                $customer->convertToClient();
+            } elseif ($data['status'] === 'inactive') {
+                $customer->markAsInactive();
+            } elseif ($data['status'] === 'prospect') {
+                $customer->reactivate();
+            }
+        }
+
+        // Save changes
+        $this->potentialCustomerRepository->save($customer);
+
+        return $this->json([
+            'id' => $customer->getId(),
+            'type' => $customer->getType(),
+            'status' => $customer->getStatus(),
+            'firstName' => $customer->getFirstName(),
+            'lastName' => $customer->getLastName(),
+            'companyName' => $customer->getCompanyName(),
+            'email' => $customer->getPrimaryEmail(),
+            'phone' => $customer->getPhone(),
+            'address' => $customer->getAddress(),
+            'city' => $customer->getCity(),
+            'country' => $customer->getCountry(),
+            'website' => $customer->getWebsite(),
+            'industry' => $customer->getIndustry(),
+            'tags' => $customer->getTags(),
+            'priority' => $customer->getPriority(),
+            'assignedTo' => $customer->getAssignedTo(),
+            'assignedToName' => $customer->getAssignedToName(),
+            'totalValue' => $customer->getTotalValue(),
+            'potentialValue' => $customer->getPotentialValue(),
+            'lastContactDate' => $customer->getLastContactDate(),
+            'requestsCount' => $customer->getRequestsCount(),
+            'quotationsCount' => $customer->getQuotationsCount(),
+            'conversationsCount' => $customer->getConversationsCount(),
+            'createdAt' => $customer->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
+            'updatedAt' => $customer->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z'),
+            'convertedAt' => $customer->getConvertedAt()?->format('Y-m-d\TH:i:s\Z')
+        ]);
     }
 
     #[Route('/accounts/{id}', name: 'delete_account', methods: ['DELETE'])]
@@ -552,11 +558,14 @@ class PotentialCustomerController extends AbstractController
     )]
     public function deleteAccount(string $id): JsonResponse
     {
-        // Mock deletion
-        if ($id === '1') {
-            return $this->json(['success' => true, 'message' => 'Account deleted successfully']);
+        $customer = $this->potentialCustomerRepository->findById($id);
+        
+        if (!$customer) {
+            return $this->json(['error' => true, 'message' => 'Account not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Account not found'], 404);
+        $this->potentialCustomerRepository->delete($id);
+
+        return $this->json(['success' => true, 'message' => 'Account deleted successfully']);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\LandingPage\Infrastructure\Controller;
 
+use App\LandingPage\Domain\Aggregate\LandingPage;
+use App\LandingPage\Domain\Repository\LandingPageRepositoryInterface;
 use App\RequestInformation\Application\Command\CreateRequestInformationCommand;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -12,6 +14,12 @@ use OpenApi\Attributes as OA;
 
 class LandingPageController extends AbstractController
 {
+    private LandingPageRepositoryInterface $landingPageRepository;
+
+    public function __construct(LandingPageRepositoryInterface $landingPageRepository)
+    {
+        $this->landingPageRepository = $landingPageRepository;
+    }
     #[Route('/landing-pages', name: 'list_landing_pages', methods: ['GET'])]
     #[OA\Get(
         summary: "List all landing pages by organization",
@@ -68,54 +76,35 @@ class LandingPageController extends AbstractController
 
         $published = $request->query->get('published');
 
-        // Mock data for now
-        $mockPages = [
-            [
-                'id' => '1',
-                'title' => 'Página de Contacto Principal',
-                'slug' => 'contacto-principal',
-                'htmlContent' => '<div class="container mx-auto px-4 py-8"><h1>Contáctanos</h1><p>Estamos aquí para ayudarte</p></div>',
-                'isPublished' => true,
-                'hasContactForm' => true,
-                'contactFormConfig' => [
-                    'title' => 'Formulario de Contacto',
-                    'description' => 'Déjanos tus datos y te contactaremos pronto',
-                    'submitButtonText' => 'Enviar Mensaje',
-                    'successMessage' => '¡Gracias! Hemos recibido tu mensaje y te contactaremos pronto.',
-                    'fields' => [
-                        ['id' => 'firstName', 'name' => 'firstName', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
-                        ['id' => 'lastName', 'name' => 'lastName', 'label' => 'Apellido', 'type' => 'text', 'required' => true],
-                        ['id' => 'email', 'name' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true],
-                        ['id' => 'phone', 'name' => 'phone', 'label' => 'Teléfono', 'type' => 'phone', 'required' => false],
-                        ['id' => 'message', 'name' => 'message', 'label' => 'Mensaje', 'type' => 'textarea', 'required' => true]
-                    ]
-                ],
-                'createdBy' => 'user-1',
-                'createdAt' => '2024-01-01T00:00:00Z',
-                'updatedAt' => '2024-01-15T00:00:00Z'
-            ],
-            [
-                'id' => '2',
-                'title' => 'Landing Page Promocional',
-                'slug' => 'promocion-especial',
-                'htmlContent' => '<div class="hero"><h1>Oferta Especial</h1><p>50% de descuento</p></div>',
-                'isPublished' => false,
-                'hasContactForm' => false,
-                'contactFormConfig' => null,
-                'createdBy' => 'user-2',
-                'createdAt' => '2024-01-10T00:00:00Z',
-                'updatedAt' => null
-            ]
-        ];
-
-        // Apply filters
-        $filteredPages = $mockPages;
+        // Get landing pages from repository
         if ($published !== null) {
             $isPublished = filter_var($published, FILTER_VALIDATE_BOOLEAN);
-            $filteredPages = array_filter($filteredPages, fn($p) => $p['isPublished'] === $isPublished);
+            if ($isPublished) {
+                $landingPages = $this->landingPageRepository->findPublishedByOrganizationId($organizationId);
+            } else {
+                // Get all pages and filter unpublished ones
+                $allPages = $this->landingPageRepository->findByOrganizationId($organizationId);
+                $landingPages = array_filter($allPages, fn(LandingPage $page) => !$page->isPublished());
+            }
+        } else {
+            $landingPages = $this->landingPageRepository->findByOrganizationId($organizationId);
         }
 
-        return $this->json(['data' => array_values($filteredPages)]);
+        // Convert domain objects to array format
+        $data = array_map(function (LandingPage $landingPage) {
+            return [
+                'id' => $landingPage->getId(),
+                'title' => $landingPage->getTitle(),
+                'slug' => $landingPage->getSlug(),
+                'isPublished' => $landingPage->isPublished(),
+                'hasContactForm' => $landingPage->hasContactForm(),
+                'createdBy' => $landingPage->getCreatedBy(),
+                'createdAt' => $landingPage->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
+                'updatedAt' => $landingPage->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z')
+            ];
+        }, $landingPages);
+
+        return $this->json(['data' => $data]);
     }
 
     #[Route('/landing-pages', name: 'create_landing_page', methods: ['POST'])]
@@ -154,22 +143,40 @@ class LandingPageController extends AbstractController
             return $this->json(['error' => true, 'message' => 'Missing required fields'], 400);
         }
 
-        // Mock creation
+        // Create new landing page
         $pageId = uniqid();
-        $mockPage = [
-            'id' => $pageId,
-            'title' => $data['title'],
-            'slug' => $data['slug'],
-            'htmlContent' => $data['htmlContent'],
-            'isPublished' => $data['isPublished'] ?? false,
-            'hasContactForm' => $data['hasContactForm'] ?? false,
-            'contactFormConfig' => $data['contactFormConfig'] ?? null,
-            'createdBy' => 'current-user', // Should come from authentication
-            'createdAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:s\Z'),
-            'updatedAt' => null
-        ];
+        $landingPage = new LandingPage(
+            $pageId,
+            $data['title'],
+            $data['slug'],
+            $data['htmlContent'],
+            $organizationId,
+            'current-user', // Should come from authentication
+            $data['hasContactForm'] ?? false,
+            $data['contactFormConfig'] ?? null
+        );
 
-        return $this->json($mockPage, 201);
+        // Set published status if provided
+        if (isset($data['isPublished']) && $data['isPublished']) {
+            $landingPage->publish();
+        }
+
+        // Save to repository
+        $this->landingPageRepository->save($landingPage);
+
+        // Return created landing page data
+        return $this->json([
+            'id' => $landingPage->getId(),
+            'title' => $landingPage->getTitle(),
+            'slug' => $landingPage->getSlug(),
+            'htmlContent' => $landingPage->getHtmlContent(),
+            'isPublished' => $landingPage->isPublished(),
+            'hasContactForm' => $landingPage->hasContactForm(),
+            'contactFormConfig' => $landingPage->getContactFormConfig(),
+            'createdBy' => $landingPage->getCreatedBy(),
+            'createdAt' => $landingPage->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
+            'updatedAt' => $landingPage->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z')
+        ], 201);
     }
 
     #[Route('/landing-pages/{id}', name: 'get_landing_page', methods: ['GET'])]
@@ -192,35 +199,24 @@ class LandingPageController extends AbstractController
     )]
     public function getLandingPage(string $id): JsonResponse
     {
-        // Mock data
-        if ($id === '1') {
-            return $this->json([
-                'id' => '1',
-                'title' => 'Página de Contacto Principal',
-                'slug' => 'contacto-principal',
-                'htmlContent' => '<div class="container mx-auto px-4 py-8"><h1>Contáctanos</h1><p>Estamos aquí para ayudarte</p></div>',
-                'isPublished' => true,
-                'hasContactForm' => true,
-                'contactFormConfig' => [
-                    'title' => 'Formulario de Contacto',
-                    'description' => 'Déjanos tus datos y te contactaremos pronto',
-                    'submitButtonText' => 'Enviar Mensaje',
-                    'successMessage' => '¡Gracias! Hemos recibido tu mensaje y te contactaremos pronto.',
-                    'fields' => [
-                        ['id' => 'firstName', 'name' => 'firstName', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
-                        ['id' => 'lastName', 'name' => 'lastName', 'label' => 'Apellido', 'type' => 'text', 'required' => true],
-                        ['id' => 'email', 'name' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true],
-                        ['id' => 'phone', 'name' => 'phone', 'label' => 'Teléfono', 'type' => 'phone', 'required' => false],
-                        ['id' => 'message', 'name' => 'message', 'label' => 'Mensaje', 'type' => 'textarea', 'required' => true]
-                    ]
-                ],
-                'createdBy' => 'user-1',
-                'createdAt' => '2024-01-01T00:00:00Z',
-                'updatedAt' => '2024-01-15T00:00:00Z'
-            ]);
+        $landingPage = $this->landingPageRepository->findById($id);
+        
+        if (!$landingPage) {
+            return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        return $this->json([
+            'id' => $landingPage->getId(),
+            'title' => $landingPage->getTitle(),
+            'slug' => $landingPage->getSlug(),
+            'htmlContent' => $landingPage->getHtmlContent(),
+            'isPublished' => $landingPage->isPublished(),
+            'hasContactForm' => $landingPage->hasContactForm(),
+            'contactFormConfig' => $landingPage->getContactFormConfig(),
+            'createdBy' => $landingPage->getCreatedBy(),
+            'createdAt' => $landingPage->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
+            'updatedAt' => $landingPage->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z')
+        ]);
     }
 
     #[Route('/landing-pages/slug/{slug}', name: 'get_landing_page_by_slug', methods: ['GET'])]
@@ -243,31 +239,20 @@ class LandingPageController extends AbstractController
     )]
     public function getLandingPageBySlug(string $slug): JsonResponse
     {
-        // Mock data - only return published pages
-        if ($slug === 'contacto-principal') {
-            return $this->json([
-                'id' => '1',
-                'title' => 'Página de Contacto Principal',
-                'slug' => 'contacto-principal',
-                'htmlContent' => '<div class="container mx-auto px-4 py-8"><h1>Contáctanos</h1><p>Estamos aquí para ayudarte</p></div>',
-                'hasContactForm' => true,
-                'contactFormConfig' => [
-                    'title' => 'Formulario de Contacto',
-                    'description' => 'Déjanos tus datos y te contactaremos pronto',
-                    'submitButtonText' => 'Enviar Mensaje',
-                    'successMessage' => '¡Gracias! Hemos recibido tu mensaje y te contactaremos pronto.',
-                    'fields' => [
-                        ['id' => 'firstName', 'name' => 'firstName', 'label' => 'Nombre', 'type' => 'text', 'required' => true],
-                        ['id' => 'lastName', 'name' => 'lastName', 'label' => 'Apellido', 'type' => 'text', 'required' => true],
-                        ['id' => 'email', 'name' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true],
-                        ['id' => 'phone', 'name' => 'phone', 'label' => 'Teléfono', 'type' => 'phone', 'required' => false],
-                        ['id' => 'message', 'name' => 'message', 'label' => 'Mensaje', 'type' => 'textarea', 'required' => true]
-                    ]
-                ]
-            ]);
+        $landingPage = $this->landingPageRepository->findBySlug($slug);
+        
+        if (!$landingPage) {
+            return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        return $this->json([
+            'id' => $landingPage->getId(),
+            'title' => $landingPage->getTitle(),
+            'slug' => $landingPage->getSlug(),
+            'htmlContent' => $landingPage->getHtmlContent(),
+            'hasContactForm' => $landingPage->hasContactForm(),
+            'contactFormConfig' => $landingPage->getContactFormConfig()
+        ]);
     }
 
     #[Route('/landing-pages/{id}', name: 'update_landing_page', methods: ['PUT'])]
@@ -290,30 +275,50 @@ class LandingPageController extends AbstractController
     )]
     public function updateLandingPage(string $id, Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        $landingPage = $this->landingPageRepository->findById($id);
         
-        // Mock update
-        if ($id === '1') {
-            return $this->json([
-                'id' => $id,
-                'title' => $data['title'] ?? 'Página de Contacto Principal',
-                'slug' => $data['slug'] ?? 'contacto-principal',
-                'htmlContent' => $data['htmlContent'] ?? '<div class="container mx-auto px-4 py-8"><h1>Contáctanos</h1><p>Estamos aquí para ayudarte</p></div>',
-                'isPublished' => $data['isPublished'] ?? true,
-                'hasContactForm' => $data['hasContactForm'] ?? true,
-                'contactFormConfig' => $data['contactFormConfig'] ?? [
-                    'title' => 'Formulario de Contacto',
-                    'description' => 'Déjanos tus datos y te contactaremos pronto',
-                    'submitButtonText' => 'Enviar Mensaje',
-                    'successMessage' => '¡Gracias! Hemos recibido tu mensaje y te contactaremos pronto.'
-                ],
-                'createdBy' => 'user-1',
-                'createdAt' => '2024-01-01T00:00:00Z',
-                'updatedAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:s\Z')
-            ]);
+        if (!$landingPage) {
+            return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        $data = json_decode($request->getContent(), true);
+        
+        // Update content if provided
+        if (isset($data['title']) || isset($data['slug']) || isset($data['htmlContent']) ||
+            isset($data['hasContactForm']) || isset($data['contactFormConfig'])) {
+            $landingPage->updateContent(
+                $data['title'] ?? $landingPage->getTitle(),
+                $data['slug'] ?? $landingPage->getSlug(),
+                $data['htmlContent'] ?? $landingPage->getHtmlContent(),
+                $data['hasContactForm'] ?? $landingPage->hasContactForm(),
+                $data['contactFormConfig'] ?? $landingPage->getContactFormConfig()
+            );
+        }
+
+        // Update published status if provided
+        if (isset($data['isPublished'])) {
+            if ($data['isPublished'] && !$landingPage->isPublished()) {
+                $landingPage->publish();
+            } elseif (!$data['isPublished'] && $landingPage->isPublished()) {
+                $landingPage->unpublish();
+            }
+        }
+
+        // Save changes
+        $this->landingPageRepository->save($landingPage);
+
+        return $this->json([
+            'id' => $landingPage->getId(),
+            'title' => $landingPage->getTitle(),
+            'slug' => $landingPage->getSlug(),
+            'htmlContent' => $landingPage->getHtmlContent(),
+            'isPublished' => $landingPage->isPublished(),
+            'hasContactForm' => $landingPage->hasContactForm(),
+            'contactFormConfig' => $landingPage->getContactFormConfig(),
+            'createdBy' => $landingPage->getCreatedBy(),
+            'createdAt' => $landingPage->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
+            'updatedAt' => $landingPage->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z')
+        ]);
     }
 
     #[Route('/landing-pages/{id}', name: 'delete_landing_page', methods: ['DELETE'])]
@@ -336,12 +341,15 @@ class LandingPageController extends AbstractController
     )]
     public function deleteLandingPage(string $id): JsonResponse
     {
-        // Mock deletion
-        if ($id === '1') {
-            return $this->json(['success' => true, 'message' => 'Landing page deleted successfully']);
+        $landingPage = $this->landingPageRepository->findById($id);
+        
+        if (!$landingPage) {
+            return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        $this->landingPageRepository->delete($id);
+
+        return $this->json(['success' => true, 'message' => 'Landing page deleted successfully']);
     }
 
     #[Route('/landing-pages/{id}/submit', name: 'submit_landing_page_form', methods: ['POST'])]
@@ -389,17 +397,22 @@ class LandingPageController extends AbstractController
             return $this->json(['error' => true, 'message' => 'Missing required fields'], 400);
         }
 
-        // Mock landing page check
-        if ($id !== '1') {
+        // Check if landing page exists and has contact form
+        $landingPage = $this->landingPageRepository->findById($id);
+        if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        }
+
+        if (!$landingPage->hasContactForm()) {
+            return $this->json(['error' => true, 'message' => 'Landing page does not have a contact form'], 400);
         }
 
         // Create a request information from the form submission
         try {
             $command = new CreateRequestInformationCommand(
                 $data['programInterest'] ?? 'Consulta desde Landing Page',
-                'Landing Page: ' . $id,
-                'default-org', // Should be determined from the landing page
+                'Landing Page: ' . $landingPage->getTitle(),
+                $landingPage->getOrganizationId(),
                 $data['firstName'],
                 $data['lastName'],
                 $data['email'],
