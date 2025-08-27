@@ -129,13 +129,10 @@ class PotentialCustomerController extends AbstractController
     public function listAccounts(Request $request): JsonResponse
     {
         $organizationId = $request->headers->get('X-Org-Id');
-        if (!$organizationId) {
-            return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
-        }
 
         $page = max(1, (int) $request->query->get('page', 1));
         $perPage = max(1, min(100, (int) $request->query->get('perPage', 20)));
-        
+
         // Build filters array
         $filters = [];
         if ($type = $request->query->get('type')) {
@@ -287,7 +284,7 @@ class PotentialCustomerController extends AbstractController
     public function getAccount(string $id): JsonResponse
     {
         $customer = $this->potentialCustomerRepository->findById($id);
-        
+
         if (!$customer) {
             return $this->json(['error' => true, 'message' => 'Account not found'], 404);
         }
@@ -357,7 +354,7 @@ class PotentialCustomerController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data || !isset($data['type'], $data['email'], $data['phone'], $data['priority'])) {
             return $this->json(['error' => true, 'message' => 'Missing required fields'], 400);
         }
@@ -431,13 +428,13 @@ class PotentialCustomerController extends AbstractController
     public function updateAccount(string $id, Request $request): JsonResponse
     {
         $customer = $this->potentialCustomerRepository->findById($id);
-        
+
         if (!$customer) {
             return $this->json(['error' => true, 'message' => 'Account not found'], 404);
         }
 
         $data = json_decode($request->getContent(), true);
-        
+
         // Update customer properties
         if (isset($data['type'])) {
             $customer->setType($data['type']);
@@ -559,7 +556,7 @@ class PotentialCustomerController extends AbstractController
     public function deleteAccount(string $id): JsonResponse
     {
         $customer = $this->potentialCustomerRepository->findById($id);
-        
+
         if (!$customer) {
             return $this->json(['error' => true, 'message' => 'Account not found'], 404);
         }

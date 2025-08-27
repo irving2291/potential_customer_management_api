@@ -36,10 +36,10 @@ class DoctrineAssignmentRuleEntity
     #[ORM\Column(type: 'string', length: 36)]
     private string $organizationId;
 
-    #[ORM\Column(type: 'datetime_immutable')]
+    #[ORM\Column(type: "datetime_immutable", options: ["default" => "CURRENT_TIMESTAMP"])]
     private \DateTimeImmutable $createdAt;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[ORM\Column(type: "datetime", nullable: true)]
     private ?\DateTimeImmutable $updatedAt;
 
     public function __construct(
