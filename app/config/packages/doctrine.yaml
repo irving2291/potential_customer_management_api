@@ -36,6 +36,24 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Quotation/Infrastructure/Persistence'
                 prefix: 'App\Quotation\Infrastructure\Persistence'
                 alias: QuotationPersistence
+            Assignee:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/Assignee/Infrastructure/Persistence'
+                prefix: 'App\Assignee\Infrastructure\Persistence'
+                alias: AssigneePersistence
+            Activation:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/Activation/Infrastructure/Persistence'
+                prefix: 'App\Activation\Infrastructure\Persistence'
+                alias: ActivationPersistence
+            LandingPage:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/LandingPage/Infrastructure/Persistence'
+                prefix: 'App\LandingPage\Infrastructure\Persistence'
+                alias: LandingPagePersistence
         controller_resolver:
             auto_mapping: false
 

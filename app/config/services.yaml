@@ -19,6 +19,11 @@ services:
     App\RequestInformation\Domain\Repository\RequestNoteRepositoryInterface: '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestNoteRepository'
     App\Quotation\Domain\Repository\QuotationRepositoryInterface: '@App\Quotation\Infrastructure\Repository\DoctrineQuotationRepository'
     App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface: '@App\RequestInformation\Infrastructure\Repository\DoctrineRequestInformationStatusRepository'
+    
+    # New repository interfaces
+    App\Assignee\Domain\Repository\AssigneeRepositoryInterface: '@App\Assignee\Infrastructure\Repository\DoctrineAssigneeRepository'
+    App\Activation\Domain\Repository\ActivationRepositoryInterface: '@App\Activation\Infrastructure\Repository\DoctrineActivationRepository'
+    App\LandingPage\Domain\Repository\LandingPageRepositoryInterface: '@App\LandingPage\Infrastructure\Repository\DoctrineLandingPageRepository'
 
     App\Quotation\Application\Query\QuotationQueryServiceInterface: '@App\Quotation\Application\UseCase\ListQuotationsByOrg\QuotationQueryServiceHandler'
 
