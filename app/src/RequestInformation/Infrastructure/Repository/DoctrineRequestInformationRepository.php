@@ -130,4 +130,82 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
         }
         return RequestInformationMapper::toDomain($entity);
     }
+
+    public function findByAssigneeId(string $assigneeId, ?string $status = null, int $page = 1, int $limit = 10): array
+    {
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('r')
+            ->from(DoctrineRequestInformationEntity::class, 'r')
+            ->where('r.assigneeId = :assigneeId')
+            ->setParameter('assigneeId', $assigneeId);
+
+        if ($status) {
+            $qb->innerJoin('r.status', 's')
+                ->andWhere('s.code = :status')
+                ->setParameter('status', $status);
+        }
+
+        $qb->orderBy('r.createdAt', 'DESC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+
+        $entities = $qb->getQuery()->getResult();
+        
+        return array_map([RequestInformationMapper::class, 'toDomain'], $entities);
+    }
+
+    public function findLastAssignedByRule(string $ruleId): ?RequestInformation
+    {
+        // For now, we'll implement a simple version that gets the last assigned request
+        // In a production system, you might want to store rule assignment history
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('r')
+            ->from(DoctrineRequestInformationEntity::class, 'r')
+            ->where('r.assigneeId IS NOT NULL')
+            ->orderBy('r.createdAt', 'DESC')
+            ->setMaxResults(1);
+
+        $entity = $qb->getQuery()->getOneOrNullResult();
+        
+        return $entity ? RequestInformationMapper::toDomain($entity) : null;
+    }
+
+    public function countActiveByAssignee(string $assigneeId, string $organizationId): int
+    {
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('COUNT(r.id)')
+            ->from(DoctrineRequestInformationEntity::class, 'r')
+            ->innerJoin('r.status', 's')
+            ->where('r.assigneeId = :assigneeId')
+            ->andWhere('r.organizationId = :organizationId')
+            ->andWhere('s.code NOT IN (:closedStatuses)')
+            ->setParameter('assigneeId', $assigneeId)
+            ->setParameter('organizationId', $organizationId)
+            ->setParameter('closedStatuses', ['won', 'lost', 'cancelled']);
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    public function findByAssigneeIdAndOrganization(string $assigneeId, string $organizationId, ?string $status = null): array
+    {
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('r')
+            ->from(DoctrineRequestInformationEntity::class, 'r')
+            ->where('r.assigneeId = :assigneeId')
+            ->andWhere('r.organizationId = :organizationId')
+            ->setParameter('assigneeId', $assigneeId)
+            ->setParameter('organizationId', $organizationId);
+
+        if ($status) {
+            $qb->innerJoin('r.status', 's')
+                ->andWhere('s.code = :status')
+                ->setParameter('status', $status);
+        }
+
+        $qb->orderBy('r.createdAt', 'DESC');
+
+        $entities = $qb->getQuery()->getResult();
+        
+        return array_map([RequestInformationMapper::class, 'toDomain'], $entities);
+    }
 }

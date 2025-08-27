@@ -4,6 +4,7 @@ namespace App\LandingPage\Infrastructure\Controller;
 
 use App\LandingPage\Domain\Aggregate\LandingPage;
 use App\LandingPage\Domain\Repository\LandingPageRepositoryInterface;
+use App\LandingPage\Domain\Service\HtmlTemplateService;
 use App\RequestInformation\Application\Command\CreateRequestInformationCommand;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,10 +16,14 @@ use OpenApi\Attributes as OA;
 class LandingPageController extends AbstractController
 {
     private LandingPageRepositoryInterface $landingPageRepository;
+    private HtmlTemplateService $templateService;
 
-    public function __construct(LandingPageRepositoryInterface $landingPageRepository)
-    {
+    public function __construct(
+        LandingPageRepositoryInterface $landingPageRepository,
+        HtmlTemplateService $templateService
+    ) {
         $this->landingPageRepository = $landingPageRepository;
+        $this->templateService = $templateService;
     }
     #[Route('/landing-pages', name: 'list_landing_pages', methods: ['GET'])]
     #[OA\Get(
@@ -120,7 +125,8 @@ class LandingPageController extends AbstractController
                     new OA\Property(property: "htmlContent", type: "string"),
                     new OA\Property(property: "isPublished", type: "boolean", default: false),
                     new OA\Property(property: "hasContactForm", type: "boolean", default: false),
-                    new OA\Property(property: "contactFormConfig", type: "object", nullable: true)
+                    new OA\Property(property: "contactFormConfig", type: "object", nullable: true),
+                    new OA\Property(property: "variables", type: "object", nullable: true, description: "Key-value pairs for template variables")
                 ]
             )
         ),
@@ -143,6 +149,19 @@ class LandingPageController extends AbstractController
             return $this->json(['error' => true, 'message' => 'Missing required fields'], 400);
         }
 
+        // Validate variables if provided
+        $variables = $data['variables'] ?? [];
+        if (!is_array($variables)) {
+            return $this->json(['error' => true, 'message' => 'Variables must be an object'], 400);
+        }
+
+        // Validate variable names
+        foreach (array_keys($variables) as $varName) {
+            if (!$this->templateService->validateVariableName($varName)) {
+                return $this->json(['error' => true, 'message' => "Invalid variable name: $varName"], 400);
+            }
+        }
+
         // Create new landing page
         $pageId = uniqid();
         $landingPage = new LandingPage(
@@ -153,7 +172,8 @@ class LandingPageController extends AbstractController
             $organizationId,
             'current-user', // Should come from authentication
             $data['hasContactForm'] ?? false,
-            $data['contactFormConfig'] ?? null
+            $data['contactFormConfig'] ?? null,
+            $variables
         );
 
         // Set published status if provided
@@ -173,6 +193,7 @@ class LandingPageController extends AbstractController
             'isPublished' => $landingPage->isPublished(),
             'hasContactForm' => $landingPage->hasContactForm(),
             'contactFormConfig' => $landingPage->getContactFormConfig(),
+            'variables' => $landingPage->getVariables(),
             'createdBy' => $landingPage->getCreatedBy(),
             'createdAt' => $landingPage->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
             'updatedAt' => $landingPage->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z')
@@ -213,6 +234,7 @@ class LandingPageController extends AbstractController
             'isPublished' => $landingPage->isPublished(),
             'hasContactForm' => $landingPage->hasContactForm(),
             'contactFormConfig' => $landingPage->getContactFormConfig(),
+            'variables' => $landingPage->getVariables(),
             'createdBy' => $landingPage->getCreatedBy(),
             'createdAt' => $landingPage->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
             'updatedAt' => $landingPage->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z')
@@ -249,9 +271,11 @@ class LandingPageController extends AbstractController
             'id' => $landingPage->getId(),
             'title' => $landingPage->getTitle(),
             'slug' => $landingPage->getSlug(),
-            'htmlContent' => $landingPage->getHtmlContent(),
+            'htmlContent' => $landingPage->getProcessedHtmlContent($this->templateService),
+            'rawHtmlContent' => $landingPage->getHtmlContent(),
             'hasContactForm' => $landingPage->hasContactForm(),
-            'contactFormConfig' => $landingPage->getContactFormConfig()
+            'contactFormConfig' => $landingPage->getContactFormConfig(),
+            'variables' => $landingPage->getVariables()
         ]);
     }
 
@@ -283,15 +307,30 @@ class LandingPageController extends AbstractController
 
         $data = json_decode($request->getContent(), true);
         
+        // Validate variables if provided
+        if (isset($data['variables'])) {
+            if (!is_array($data['variables'])) {
+                return $this->json(['error' => true, 'message' => 'Variables must be an object'], 400);
+            }
+            
+            // Validate variable names
+            foreach (array_keys($data['variables']) as $varName) {
+                if (!$this->templateService->validateVariableName($varName)) {
+                    return $this->json(['error' => true, 'message' => "Invalid variable name: $varName"], 400);
+                }
+            }
+        }
+        
         // Update content if provided
         if (isset($data['title']) || isset($data['slug']) || isset($data['htmlContent']) ||
-            isset($data['hasContactForm']) || isset($data['contactFormConfig'])) {
+            isset($data['hasContactForm']) || isset($data['contactFormConfig']) || isset($data['variables'])) {
             $landingPage->updateContent(
                 $data['title'] ?? $landingPage->getTitle(),
                 $data['slug'] ?? $landingPage->getSlug(),
                 $data['htmlContent'] ?? $landingPage->getHtmlContent(),
                 $data['hasContactForm'] ?? $landingPage->hasContactForm(),
-                $data['contactFormConfig'] ?? $landingPage->getContactFormConfig()
+                $data['contactFormConfig'] ?? $landingPage->getContactFormConfig(),
+                $data['variables'] ?? $landingPage->getVariables()
             );
         }
 
@@ -315,6 +354,7 @@ class LandingPageController extends AbstractController
             'isPublished' => $landingPage->isPublished(),
             'hasContactForm' => $landingPage->hasContactForm(),
             'contactFormConfig' => $landingPage->getContactFormConfig(),
+            'variables' => $landingPage->getVariables(),
             'createdBy' => $landingPage->getCreatedBy(),
             'createdAt' => $landingPage->getCreatedAt()->format('Y-m-d\TH:i:s\Z'),
             'updatedAt' => $landingPage->getUpdatedAt()?->format('Y-m-d\TH:i:s\Z')
@@ -432,5 +472,257 @@ class LandingPageController extends AbstractController
                 'message' => 'Error processing form submission'
             ], 500);
         }
+    }
+
+    #[Route('/landing-pages/{id}/variables', name: 'get_landing_page_variables', methods: ['GET'])]
+    #[OA\Get(
+        summary: "Get landing page variables",
+        tags: ['Landing Pages'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "Landing page ID",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Landing page variables",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "variables", type: "object"),
+                        new OA\Property(property: "extractedVariables", type: "array", items: new OA\Items(type: "string")),
+                        new OA\Property(property: "missingVariables", type: "array", items: new OA\Items(type: "string"))
+                    ]
+                )
+            ),
+            new OA\Response(response: 404, description: "Landing page not found")
+        ]
+    )]
+    public function getLandingPageVariables(string $id): JsonResponse
+    {
+        $landingPage = $this->landingPageRepository->findById($id);
+        
+        if (!$landingPage) {
+            return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        }
+
+        $extractedVars = $landingPage->getExtractedVariables($this->templateService);
+        $currentVars = $landingPage->getVariables();
+        $missingVars = array_diff($extractedVars, array_keys($currentVars));
+
+        return $this->json([
+            'variables' => $currentVars,
+            'extractedVariables' => $extractedVars,
+            'missingVariables' => $missingVars
+        ]);
+    }
+
+    #[Route('/landing-pages/{id}/variables', name: 'update_landing_page_variables', methods: ['PUT'])]
+    #[OA\Put(
+        summary: "Update landing page variables",
+        tags: ['Landing Pages'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "Landing page ID",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["variables"],
+                properties: [
+                    new OA\Property(property: "variables", type: "object", description: "Key-value pairs for template variables")
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "Variables updated successfully"),
+            new OA\Response(response: 404, description: "Landing page not found"),
+            new OA\Response(response: 400, description: "Invalid variables data")
+        ]
+    )]
+    public function updateLandingPageVariables(string $id, Request $request): JsonResponse
+    {
+        $landingPage = $this->landingPageRepository->findById($id);
+        
+        if (!$landingPage) {
+            return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        
+        if (!$data || !isset($data['variables']) || !is_array($data['variables'])) {
+            return $this->json(['error' => true, 'message' => 'Variables must be provided as an object'], 400);
+        }
+
+        // Validate variable names
+        foreach (array_keys($data['variables']) as $varName) {
+            if (!$this->templateService->validateVariableName($varName)) {
+                return $this->json(['error' => true, 'message' => "Invalid variable name: $varName"], 400);
+            }
+        }
+
+        $landingPage->updateVariables($data['variables']);
+        $this->landingPageRepository->save($landingPage);
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Variables updated successfully',
+            'variables' => $landingPage->getVariables()
+        ]);
+    }
+
+    #[Route('/landing-pages/{id}/variables/{varName}', name: 'add_landing_page_variable', methods: ['POST'])]
+    #[OA\Post(
+        summary: "Add or update a single landing page variable",
+        tags: ['Landing Pages'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "Landing page ID",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "varName",
+                description: "Variable name",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["value"],
+                properties: [
+                    new OA\Property(property: "value", type: "string", description: "Variable value")
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: "Variable added/updated successfully"),
+            new OA\Response(response: 404, description: "Landing page not found"),
+            new OA\Response(response: 400, description: "Invalid variable data")
+        ]
+    )]
+    public function addLandingPageVariable(string $id, string $varName, Request $request): JsonResponse
+    {
+        $landingPage = $this->landingPageRepository->findById($id);
+        
+        if (!$landingPage) {
+            return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        }
+
+        if (!$this->templateService->validateVariableName($varName)) {
+            return $this->json(['error' => true, 'message' => "Invalid variable name: $varName"], 400);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        
+        if (!$data || !isset($data['value'])) {
+            return $this->json(['error' => true, 'message' => 'Variable value is required'], 400);
+        }
+
+        $landingPage->addVariable($varName, (string)$data['value']);
+        $this->landingPageRepository->save($landingPage);
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Variable added/updated successfully',
+            'variable' => [$varName => $data['value']]
+        ]);
+    }
+
+    #[Route('/landing-pages/{id}/variables/{varName}', name: 'delete_landing_page_variable', methods: ['DELETE'])]
+    #[OA\Delete(
+        summary: "Delete a landing page variable",
+        tags: ['Landing Pages'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "Landing page ID",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "varName",
+                description: "Variable name",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(response: 200, description: "Variable deleted successfully"),
+            new OA\Response(response: 404, description: "Landing page not found")
+        ]
+    )]
+    public function deleteLandingPageVariable(string $id, string $varName): JsonResponse
+    {
+        $landingPage = $this->landingPageRepository->findById($id);
+        
+        if (!$landingPage) {
+            return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        }
+
+        $landingPage->removeVariable($varName);
+        $this->landingPageRepository->save($landingPage);
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Variable deleted successfully'
+        ]);
+    }
+
+    #[Route('/landing-pages/{id}/preview', name: 'preview_landing_page', methods: ['GET'])]
+    #[OA\Get(
+        summary: "Get landing page preview with processed variables",
+        tags: ['Landing Pages'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "Landing page ID",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Landing page preview",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "processedHtml", type: "string"),
+                        new OA\Property(property: "extractedVariables", type: "array", items: new OA\Items(type: "string")),
+                        new OA\Property(property: "missingVariables", type: "array", items: new OA\Items(type: "string"))
+                    ]
+                )
+            ),
+            new OA\Response(response: 404, description: "Landing page not found")
+        ]
+    )]
+    public function previewLandingPage(string $id): JsonResponse
+    {
+        $landingPage = $this->landingPageRepository->findById($id);
+        
+        if (!$landingPage) {
+            return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
+        }
+
+        $preview = $landingPage->getTemplatePreview($this->templateService);
+
+        return $this->json($preview);
     }
 }

@@ -26,7 +26,8 @@ class RequestInformationMapper
             ->setStatus($statusEntity)
             ->setEmail((string)$domain->getEmail())
             ->setPhone((string)$domain->getPhone())
-            ->setCity($domain->getCity());
+            ->setCity($domain->getCity())
+            ->setAssigneeId($domain->getAssigneeId());
         return $entity;
     }
 
@@ -52,6 +53,7 @@ class RequestInformationMapper
             new Email($entity->getEmail()),
             new Phone($entity->getPhone()),
             $entity->getCity(),
+            $entity->getAssigneeId()
         );
     }
 }

@@ -3,6 +3,7 @@
 namespace App\LandingPage\Domain\Aggregate;
 
 use App\Common\Domain\DomainEventRecorder;
+use App\LandingPage\Domain\Service\HtmlTemplateService;
 
 class LandingPage
 {
@@ -15,6 +16,7 @@ class LandingPage
     private bool $isPublished;
     private bool $hasContactForm;
     private ?array $contactFormConfig;
+    private array $variables;
     private string $organizationId;
     private string $createdBy;
     private \DateTimeImmutable $createdAt;
@@ -28,7 +30,8 @@ class LandingPage
         string $organizationId,
         string $createdBy,
         bool $hasContactForm = false,
-        ?array $contactFormConfig = null
+        ?array $contactFormConfig = null,
+        array $variables = []
     ) {
         $this->id = $id;
         $this->title = $title;
@@ -37,6 +40,7 @@ class LandingPage
         $this->isPublished = false;
         $this->hasContactForm = $hasContactForm;
         $this->contactFormConfig = $contactFormConfig;
+        $this->variables = $variables;
         $this->organizationId = $organizationId;
         $this->createdBy = $createdBy;
         $this->createdAt = new \DateTimeImmutable();
@@ -78,6 +82,11 @@ class LandingPage
         return $this->contactFormConfig;
     }
 
+    public function getVariables(): array
+    {
+        return $this->variables;
+    }
+
     public function getOrganizationId(): string
     {
         return $this->organizationId;
@@ -103,13 +112,15 @@ class LandingPage
         string $slug,
         string $htmlContent,
         bool $hasContactForm = false,
-        ?array $contactFormConfig = null
+        ?array $contactFormConfig = null,
+        array $variables = []
     ): void {
         $this->title = $title;
         $this->slug = $slug;
         $this->htmlContent = $htmlContent;
         $this->hasContactForm = $hasContactForm;
         $this->contactFormConfig = $contactFormConfig;
+        $this->variables = $variables;
         $this->updatedAt = new \DateTimeImmutable();
     }
 
@@ -130,5 +141,50 @@ class LandingPage
         $this->hasContactForm = $hasContactForm;
         $this->contactFormConfig = $contactFormConfig;
         $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function updateVariables(array $variables): void
+    {
+        $this->variables = $variables;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function addVariable(string $key, string $value): void
+    {
+        $this->variables[$key] = $value;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function removeVariable(string $key): void
+    {
+        unset($this->variables[$key]);
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function getProcessedHtmlContent(HtmlTemplateService $templateService = null): string
+    {
+        if ($templateService === null) {
+            $templateService = new HtmlTemplateService();
+        }
+        
+        return $templateService->processTemplate($this->htmlContent, $this->variables);
+    }
+
+    public function getTemplatePreview(HtmlTemplateService $templateService = null): array
+    {
+        if ($templateService === null) {
+            $templateService = new HtmlTemplateService();
+        }
+        
+        return $templateService->getPreview($this->htmlContent, $this->variables);
+    }
+
+    public function getExtractedVariables(HtmlTemplateService $templateService = null): array
+    {
+        if ($templateService === null) {
+            $templateService = new HtmlTemplateService();
+        }
+        
+        return $templateService->extractVariables($this->htmlContent);
     }
 }

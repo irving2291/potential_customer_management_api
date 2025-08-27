@@ -18,6 +18,7 @@ class RequestInformation
     private Email $email;
     private Phone $phone;
     private string $city;
+    private ?string $assigneeId;       // Assignee UID
 
     private \DateTimeImmutable $updatedAt;
 
@@ -31,7 +32,8 @@ class RequestInformation
         string $lastName,
         Email $email,
         Phone $phone,
-        string $city
+        string $city,
+        ?string $assigneeId = null
     ) {
         $this->id = $id;
         $this->programInterestId = $programInterestId;
@@ -43,6 +45,7 @@ class RequestInformation
         $this->email = $email;
         $this->phone = $phone;
         $this->city = $city;
+        $this->assigneeId = $assigneeId;
     }
 
     // --- GETTERS ---
@@ -91,6 +94,11 @@ class RequestInformation
     public function getCity(): string
     {
         return $this->city;
+    }
+
+    public function getAssigneeId(): ?string
+    {
+        return $this->assigneeId;
     }
 
     public function getUpdatedAt(): ?\DateTimeImmutable
@@ -148,6 +156,25 @@ class RequestInformation
     {
         $this->city = $city;
         return $this;
+    }
+
+    public function setAssigneeId(?string $assigneeId): self
+    {
+        $this->assigneeId = $assigneeId;
+        $this->updatedAt = new \DateTimeImmutable();
+        return $this;
+    }
+
+    public function assignTo(string $assigneeId): void
+    {
+        $this->assigneeId = $assigneeId;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function unassign(): void
+    {
+        $this->assigneeId = null;
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): self

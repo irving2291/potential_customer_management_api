@@ -50,6 +50,9 @@ class DoctrineRequestInformationEntity
     #[ORM\Column(type: "string", length: 64)]
     private string $city;
 
+    #[ORM\Column(type: "string", length: 36, nullable: true)]
+    private ?string $assigneeId = null;
+
     #[ORM\Column(type: "datetime_immutable", options: ["default" => "CURRENT_TIMESTAMP"])]
     private ?\DateTimeImmutable $createdAt = null;
 
@@ -114,6 +117,11 @@ class DoctrineRequestInformationEntity
         return $this->city;
     }
 
+    public function getAssigneeId(): ?string
+    {
+        return $this->assigneeId;
+    }
+
     // --- SETTERS ---
     public function setId(string $id): self
     {
@@ -171,6 +179,12 @@ class DoctrineRequestInformationEntity
     public function setCity(string $city): self
     {
         $this->city = $city;
+        return $this;
+    }
+
+    public function setAssigneeId(?string $assigneeId): self
+    {
+        $this->assigneeId = $assigneeId;
         return $this;
     }
 

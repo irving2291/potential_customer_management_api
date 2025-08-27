@@ -11,6 +11,7 @@ use App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryI
 use App\RequestInformation\Domain\ValueObject\Email as EmailValueObject;
 use App\RequestInformation\Domain\ValueObject\Phone;
 use App\RequestInformation\Domain\Events\RequestInformationCreated;
+use App\RequestInformation\Domain\Service\AssignmentService;
 use App\Common\Infrastructure\EventPublisher;
 
 use JetBrains\PhpStorm\NoReturn;
@@ -25,6 +26,7 @@ class CreateRequestInformationHandler
         private RequestInformationRepositoryInterface     $requestInfoRepo,
         private RequestInformationStatusRepositoryInterface $statusRepo,
         private EventPublisher                             $eventsPublisher, // 👈 inyectamos el puerto
+        private AssignmentService                          $assignmentService,
     ) {}
 
     #[NoReturn]
@@ -65,7 +67,7 @@ class CreateRequestInformationHandler
                 throw new \DomainException('No existe un estado por defecto configurado.');
             }
 
-            // 4) Crear y persistir RequestInformation (Aggregate)
+            // 4) Crear RequestInformation (Aggregate)
             $request = new RequestInformation(
                 uuid_create(UUID_TYPE_RANDOM),
                 $command->programInterest,
@@ -78,9 +80,22 @@ class CreateRequestInformationHandler
                 new Phone($command->phone),
                 $command->city
             );
+
+            // 5) Asignar responsable según reglas de asignación
+            try {
+                $assigneeId = $this->assignmentService->assignResponsible($request);
+                if ($assigneeId) {
+                    $request->assignTo($assigneeId);
+                }
+            } catch (\Exception $e) {
+                // Log the assignment error but don't fail the request creation
+                error_log('Assignment failed: ' . $e->getMessage());
+            }
+
+            // 6) Persistir RequestInformation
             $this->requestInfoRepo->save($request);
 
-            // 5) Publicar evento de dominio hacia /events (DynamoDB)
+            // 7) Publicar evento de dominio hacia /events (DynamoDB)
             //    Si tu Command trae actor, úsalo; si no, publica como "system".
             $actorId = \property_exists($command, 'actorId') && $command->actorId ? (string)$command->actorId : 'system';
             $actorUsername = \property_exists($command, 'actorUsername') && $command->actorUsername ? (string)$command->actorUsername : 'system';
@@ -97,6 +112,7 @@ class CreateRequestInformationHandler
                     'firstName'       => $command->firstName,
                     'lastName'        => $command->lastName,
                     'city'            => $command->city,
+                    'assigneeId'      => $request->getAssigneeId(),
                 ],
             );
 

@@ -16,7 +16,8 @@ class LandingPageMapper
             $entity->getOrganizationId(),
             $entity->getCreatedBy(),
             $entity->hasContactForm(),
-            $entity->getContactFormConfig()
+            $entity->getContactFormConfig(),
+            $entity->getVariables()
         );
 
         // Use reflection to set the published status, created and updated dates
@@ -50,6 +51,7 @@ class LandingPageMapper
             $landingPage->getCreatedBy(),
             $landingPage->getCreatedAt(),
             $landingPage->getContactFormConfig(),
+            $landingPage->getVariables(),
             $landingPage->getUpdatedAt()
         );
     }
@@ -62,6 +64,7 @@ class LandingPageMapper
         $entity->setIsPublished($landingPage->isPublished());
         $entity->setHasContactForm($landingPage->hasContactForm());
         $entity->setContactFormConfig($landingPage->getContactFormConfig());
+        $entity->setVariables($landingPage->getVariables());
         $entity->setUpdatedAt($landingPage->getUpdatedAt());
     }
 }

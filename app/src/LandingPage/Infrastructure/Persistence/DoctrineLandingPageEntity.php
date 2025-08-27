@@ -30,6 +30,9 @@ class DoctrineLandingPageEntity
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $contactFormConfig;
 
+    #[ORM\Column(type: 'json')]
+    private array $variables;
+
     #[ORM\Column(type: 'string', length: 36)]
     private string $organizationId;
 
@@ -53,6 +56,7 @@ class DoctrineLandingPageEntity
         string $createdBy,
         \DateTimeImmutable $createdAt,
         ?array $contactFormConfig = null,
+        array $variables = [],
         ?\DateTimeImmutable $updatedAt = null
     ) {
         $this->id = $id;
@@ -62,6 +66,7 @@ class DoctrineLandingPageEntity
         $this->isPublished = $isPublished;
         $this->hasContactForm = $hasContactForm;
         $this->contactFormConfig = $contactFormConfig;
+        $this->variables = $variables;
         $this->organizationId = $organizationId;
         $this->createdBy = $createdBy;
         $this->createdAt = $createdAt;
@@ -76,6 +81,7 @@ class DoctrineLandingPageEntity
     public function isPublished(): bool { return $this->isPublished; }
     public function hasContactForm(): bool { return $this->hasContactForm; }
     public function getContactFormConfig(): ?array { return $this->contactFormConfig; }
+    public function getVariables(): array { return $this->variables; }
     public function getOrganizationId(): string { return $this->organizationId; }
     public function getCreatedBy(): string { return $this->createdBy; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
@@ -88,5 +94,6 @@ class DoctrineLandingPageEntity
     public function setIsPublished(bool $isPublished): void { $this->isPublished = $isPublished; }
     public function setHasContactForm(bool $hasContactForm): void { $this->hasContactForm = $hasContactForm; }
     public function setContactFormConfig(?array $contactFormConfig): void { $this->contactFormConfig = $contactFormConfig; }
+    public function setVariables(array $variables): void { $this->variables = $variables; }
     public function setUpdatedAt(?\DateTimeImmutable $updatedAt): void { $this->updatedAt = $updatedAt; }
 }
