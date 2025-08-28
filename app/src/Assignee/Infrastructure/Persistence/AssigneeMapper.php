@@ -18,7 +18,8 @@ class AssigneeMapper
             $entity->isActive(),
             $entity->getRole(),
             $entity->getDepartment(),
-            $entity->getOrganizationId()
+            $entity->getOrganizationId(),
+            $entity->getUserId()
         );
 
         // Use reflection to set the created and updated dates
@@ -48,6 +49,7 @@ class AssigneeMapper
             $assignee->getRole(),
             $assignee->getDepartment(),
             $assignee->getOrganizationId(),
+            $assignee->getUserId(),
             $assignee->getCreatedAt(),
             $assignee->getUpdatedAt()
         );

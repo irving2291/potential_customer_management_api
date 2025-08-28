@@ -12,12 +12,13 @@ class Assignee
     private string $firstName;
     private string $lastName;
     private string $email;
-    private string $phone;
+    private ?string $phone;
     private string $avatar;
     private bool $active;
     private string $role;
-    private string $department;
+    private ?string $department;
     private string $organizationId;
+    private string $userId;
     private \DateTimeImmutable $createdAt;
     private ?\DateTimeImmutable $updatedAt;
 
@@ -26,12 +27,13 @@ class Assignee
         string $firstName,
         string $lastName,
         string $email,
-        string $phone,
+        ?string $phone,
         string $avatar,
         bool $active,
         string $role,
-        string $department,
-        string $organizationId
+        ?string $department,
+        string $organizationId,
+        string $userId
     ) {
         $this->id = $id;
         $this->firstName = $firstName;
@@ -43,6 +45,7 @@ class Assignee
         $this->role = $role;
         $this->department = $department;
         $this->organizationId = $organizationId;
+        $this->userId = $userId;
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = null;
     }
@@ -67,7 +70,7 @@ class Assignee
         return $this->email;
     }
 
-    public function getPhone(): string
+    public function getPhone(): ?string
     {
         return $this->phone;
     }
@@ -87,7 +90,7 @@ class Assignee
         return $this->role;
     }
 
-    public function getDepartment(): string
+    public function getDepartment(): ?string
     {
         return $this->department;
     }
@@ -95,6 +98,11 @@ class Assignee
     public function getOrganizationId(): string
     {
         return $this->organizationId;
+    }
+
+    public function getUserId(): string
+    {
+        return $this->userId;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

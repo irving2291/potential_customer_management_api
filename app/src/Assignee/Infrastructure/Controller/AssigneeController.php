@@ -48,11 +48,13 @@ class AssigneeController extends AbstractController
                                     new OA\Property(property: "firstName", type: "string"),
                                     new OA\Property(property: "lastName", type: "string"),
                                     new OA\Property(property: "email", type: "string"),
-                                    new OA\Property(property: "phone", type: "string"),
+                                    new OA\Property(property: "phone", type: "string", nullable: true),
                                     new OA\Property(property: "avatar", type: "string"),
                                     new OA\Property(property: "active", type: "boolean"),
                                     new OA\Property(property: "role", type: "string"),
-                                    new OA\Property(property: "department", type: "string"),
+                                    new OA\Property(property: "department", type: "string", nullable: true),
+                                    new OA\Property(property: "organizationId", type: "string"),
+                                    new OA\Property(property: "userId", type: "string"),
                                     new OA\Property(property: "createdAt", type: "string", format: "date-time"),
                                     new OA\Property(property: "updatedAt", type: "string", format: "date-time", nullable: true)
                                 ]
@@ -91,6 +93,8 @@ class AssigneeController extends AbstractController
                 'active' => $assignee->isActive(),
                 'role' => $assignee->getRole(),
                 'department' => $assignee->getDepartment(),
+                'organizationId' => $assignee->getOrganizationId(),
+                'userId' => $assignee->getUserId(),
                 'createdAt' => $assignee->getCreatedAt()->format('Y-m-d H:i:s'),
                 'updatedAt' => $assignee->getUpdatedAt()?->format('Y-m-d H:i:s')
             ];
@@ -294,16 +298,16 @@ class AssigneeController extends AbstractController
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ["firstName", "lastName", "email", "phone", "role", "department"],
+                required: ["firstName", "lastName", "email", "role"],
                 properties: [
                     new OA\Property(property: "firstName", type: "string", maxLength: 100),
                     new OA\Property(property: "lastName", type: "string", maxLength: 100),
                     new OA\Property(property: "email", type: "string", format: "email"),
-                    new OA\Property(property: "phone", type: "string", maxLength: 20),
+                    new OA\Property(property: "phone", type: "string", maxLength: 20, nullable: true),
                     new OA\Property(property: "avatar", type: "string", nullable: true),
                     new OA\Property(property: "active", type: "boolean", default: true),
                     new OA\Property(property: "role", type: "string", maxLength: 50),
-                    new OA\Property(property: "department", type: "string", maxLength: 100)
+                    new OA\Property(property: "department", type: "string", maxLength: 100, nullable: true)
                 ]
             )
         ),
@@ -312,6 +316,13 @@ class AssigneeController extends AbstractController
             new OA\Parameter(
                 name: "X-Org-Id",
                 description: "Organization ID",
+                in: "header",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "X-User-Id",
+                description: "User ID who is creating the assignee",
                 in: "header",
                 required: true,
                 schema: new OA\Schema(type: "string")
@@ -332,12 +343,13 @@ class AssigneeController extends AbstractController
                                 new OA\Property(property: "firstName", type: "string"),
                                 new OA\Property(property: "lastName", type: "string"),
                                 new OA\Property(property: "email", type: "string"),
-                                new OA\Property(property: "phone", type: "string"),
+                                new OA\Property(property: "phone", type: "string", nullable: true),
                                 new OA\Property(property: "avatar", type: "string"),
                                 new OA\Property(property: "active", type: "boolean"),
                                 new OA\Property(property: "role", type: "string"),
-                                new OA\Property(property: "department", type: "string"),
+                                new OA\Property(property: "department", type: "string", nullable: true),
                                 new OA\Property(property: "organizationId", type: "string"),
+                                new OA\Property(property: "userId", type: "string"),
                                 new OA\Property(property: "createdAt", type: "string", format: "date-time"),
                                 new OA\Property(property: "updatedAt", type: "string", format: "date-time", nullable: true)
                             ],
@@ -360,13 +372,18 @@ class AssigneeController extends AbstractController
             return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
         }
 
+        $userId = $request->headers->get('X-User-Id');
+        if (!$userId) {
+            return $this->json(['error' => true, 'message' => 'User header missing'], 400);
+        }
+
         $data = json_decode($request->getContent(), true);
         if (!$data) {
             return $this->json(['error' => true, 'message' => 'Invalid JSON data'], 400);
         }
 
         // Validate required fields
-        $requiredFields = ['firstName', 'lastName', 'email', 'phone', 'role', 'department'];
+        $requiredFields = ['firstName', 'lastName', 'email', 'role'];
         $missingFields = [];
         foreach ($requiredFields as $field) {
             if (!isset($data[$field]) || empty(trim($data[$field]))) {
@@ -402,12 +419,13 @@ class AssigneeController extends AbstractController
                 trim($data['firstName']),
                 trim($data['lastName']),
                 trim($data['email']),
-                trim($data['phone']),
+                isset($data['phone']) && !empty(trim($data['phone'])) ? trim($data['phone']) : null,
                 $data['avatar'] ?? '',
                 $data['active'] ?? true,
                 trim($data['role']),
-                trim($data['department']),
-                $organizationId
+                isset($data['department']) && !empty(trim($data['department'])) ? trim($data['department']) : null,
+                $organizationId,
+                $userId
             );
 
             // Save assignee
@@ -428,6 +446,7 @@ class AssigneeController extends AbstractController
                     'role' => $assignee->getRole(),
                     'department' => $assignee->getDepartment(),
                     'organizationId' => $assignee->getOrganizationId(),
+                    'userId' => $assignee->getUserId(),
                     'createdAt' => $assignee->getCreatedAt()->format('Y-m-d H:i:s'),
                     'updatedAt' => $assignee->getUpdatedAt()?->format('Y-m-d H:i:s')
                 ]

@@ -21,8 +21,8 @@ class DoctrineAssigneeEntity
     #[ORM\Column(type: 'string', length: 255, unique: true)]
     private string $email;
 
-    #[ORM\Column(type: 'string', length: 20)]
-    private string $phone;
+    #[ORM\Column(type: 'string', length: 20, nullable: true)]
+    private ?string $phone;
 
     #[ORM\Column(type: 'string', length: 500, nullable: true)]
     private ?string $avatar;
@@ -33,11 +33,14 @@ class DoctrineAssigneeEntity
     #[ORM\Column(type: 'string', length: 100)]
     private string $role;
 
-    #[ORM\Column(type: 'string', length: 100)]
-    private string $department;
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
+    private ?string $department;
 
     #[ORM\Column(type: 'string', length: 36)]
     private string $organizationId;
+
+    #[ORM\Column(type: 'string', length: 36)]
+    private string $userId;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
@@ -50,12 +53,13 @@ class DoctrineAssigneeEntity
         string $firstName,
         string $lastName,
         string $email,
-        string $phone,
+        ?string $phone,
         ?string $avatar,
         bool $active,
         string $role,
-        string $department,
+        ?string $department,
         string $organizationId,
+        string $userId,
         \DateTimeImmutable $createdAt,
         ?\DateTimeImmutable $updatedAt = null
     ) {
@@ -69,6 +73,7 @@ class DoctrineAssigneeEntity
         $this->role = $role;
         $this->department = $department;
         $this->organizationId = $organizationId;
+        $this->userId = $userId;
         $this->createdAt = $createdAt;
         $this->updatedAt = $updatedAt;
     }
@@ -93,7 +98,7 @@ class DoctrineAssigneeEntity
         return $this->email;
     }
 
-    public function getPhone(): string
+    public function getPhone(): ?string
     {
         return $this->phone;
     }
@@ -113,7 +118,7 @@ class DoctrineAssigneeEntity
         return $this->role;
     }
 
-    public function getDepartment(): string
+    public function getDepartment(): ?string
     {
         return $this->department;
     }
@@ -121,6 +126,11 @@ class DoctrineAssigneeEntity
     public function getOrganizationId(): string
     {
         return $this->organizationId;
+    }
+
+    public function getUserId(): string
+    {
+        return $this->userId;
     }
 
     public function getCreatedAt(): \DateTimeImmutable
