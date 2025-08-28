@@ -2,6 +2,7 @@
 
 namespace App\Assignee\Infrastructure\Controller;
 
+use App\Assignee\Domain\Aggregate\Assignee;
 use App\Assignee\Domain\Repository\AssigneeRepositoryInterface;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -285,5 +286,158 @@ class AssigneeController extends AbstractController
         // $requestRepository->save($requestInfo);
 
         return $this->json(['success' => true, 'message' => 'Request reassigned successfully']);
+    }
+
+    #[Route('/assignees', name: 'create_assignee', methods: ['POST'])]
+    #[OA\Post(
+        summary: "Create a new assignee",
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["firstName", "lastName", "email", "phone", "role", "department"],
+                properties: [
+                    new OA\Property(property: "firstName", type: "string", maxLength: 100),
+                    new OA\Property(property: "lastName", type: "string", maxLength: 100),
+                    new OA\Property(property: "email", type: "string", format: "email"),
+                    new OA\Property(property: "phone", type: "string", maxLength: 20),
+                    new OA\Property(property: "avatar", type: "string", nullable: true),
+                    new OA\Property(property: "active", type: "boolean", default: true),
+                    new OA\Property(property: "role", type: "string", maxLength: 50),
+                    new OA\Property(property: "department", type: "string", maxLength: 100)
+                ]
+            )
+        ),
+        tags: ['Assignees'],
+        parameters: [
+            new OA\Parameter(
+                name: "X-Org-Id",
+                description: "Organization ID",
+                in: "header",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: "Assignee created successfully",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "success", type: "boolean"),
+                        new OA\Property(property: "message", type: "string"),
+                        new OA\Property(
+                            property: "data",
+                            properties: [
+                                new OA\Property(property: "id", type: "string"),
+                                new OA\Property(property: "firstName", type: "string"),
+                                new OA\Property(property: "lastName", type: "string"),
+                                new OA\Property(property: "email", type: "string"),
+                                new OA\Property(property: "phone", type: "string"),
+                                new OA\Property(property: "avatar", type: "string"),
+                                new OA\Property(property: "active", type: "boolean"),
+                                new OA\Property(property: "role", type: "string"),
+                                new OA\Property(property: "department", type: "string"),
+                                new OA\Property(property: "organizationId", type: "string"),
+                                new OA\Property(property: "createdAt", type: "string", format: "date-time"),
+                                new OA\Property(property: "updatedAt", type: "string", format: "date-time", nullable: true)
+                            ],
+                            type: "object"
+                        )
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Validation error or missing required fields"),
+            new OA\Response(response: 409, description: "Assignee with this email already exists"),
+            new OA\Response(response: 500, description: "Internal server error")
+        ]
+    )]
+    public function createAssignee(
+        Request $request,
+        AssigneeRepositoryInterface $assigneeRepository
+    ): JsonResponse {
+        $organizationId = $request->headers->get('X-Org-Id');
+        if (!$organizationId) {
+            return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        if (!$data) {
+            return $this->json(['error' => true, 'message' => 'Invalid JSON data'], 400);
+        }
+
+        // Validate required fields
+        $requiredFields = ['firstName', 'lastName', 'email', 'phone', 'role', 'department'];
+        $missingFields = [];
+        foreach ($requiredFields as $field) {
+            if (!isset($data[$field]) || empty(trim($data[$field]))) {
+                $missingFields[] = $field;
+            }
+        }
+
+        if (!empty($missingFields)) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Missing required fields: ' . implode(', ', $missingFields)
+            ], 400);
+        }
+
+        // Validate email format
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            return $this->json(['error' => true, 'message' => 'Invalid email format'], 400);
+        }
+
+        // Check if assignee with this email already exists
+        $existingAssignee = $assigneeRepository->findByEmail($data['email']);
+        if ($existingAssignee) {
+            return $this->json(['error' => true, 'message' => 'Assignee with this email already exists'], 409);
+        }
+
+        try {
+            // Generate unique ID for the assignee
+            $assigneeId = uniqid('assignee_', true);
+
+            // Create new assignee
+            $assignee = new Assignee(
+                $assigneeId,
+                trim($data['firstName']),
+                trim($data['lastName']),
+                trim($data['email']),
+                trim($data['phone']),
+                $data['avatar'] ?? '',
+                $data['active'] ?? true,
+                trim($data['role']),
+                trim($data['department']),
+                $organizationId
+            );
+
+            // Save assignee
+            $assigneeRepository->save($assignee);
+
+            // Return success response with created assignee data
+            return $this->json([
+                'success' => true,
+                'message' => 'Assignee created successfully',
+                'data' => [
+                    'id' => $assignee->getId(),
+                    'firstName' => $assignee->getFirstName(),
+                    'lastName' => $assignee->getLastName(),
+                    'email' => $assignee->getEmail(),
+                    'phone' => $assignee->getPhone(),
+                    'avatar' => $assignee->getAvatar(),
+                    'active' => $assignee->isActive(),
+                    'role' => $assignee->getRole(),
+                    'department' => $assignee->getDepartment(),
+                    'organizationId' => $assignee->getOrganizationId(),
+                    'createdAt' => $assignee->getCreatedAt()->format('Y-m-d H:i:s'),
+                    'updatedAt' => $assignee->getUpdatedAt()?->format('Y-m-d H:i:s')
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            return $this->json([
+                'error' => true,
+                'message' => 'Failed to create assignee: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
