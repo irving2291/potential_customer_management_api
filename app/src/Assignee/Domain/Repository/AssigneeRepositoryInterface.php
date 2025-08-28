@@ -17,4 +17,6 @@ interface AssigneeRepositoryInterface
     public function delete(string $id): void;
     
     public function findByEmail(string $email): ?Assignee;
+
+    public function findByUserId(string $userId): array;
 }

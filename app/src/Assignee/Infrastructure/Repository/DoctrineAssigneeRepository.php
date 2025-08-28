@@ -88,4 +88,15 @@ class DoctrineAssigneeRepository implements AssigneeRepositoryInterface
 
         return AssigneeMapper::toDomain($entity);
     }
+
+    public function findByUserId(string $userId): array
+    {
+        $entities = $this->entityManager->getRepository(DoctrineAssigneeEntity::class)
+            ->findBy(['userId' => $userId], ['firstName' => 'ASC']);
+
+        return array_map(
+            fn(DoctrineAssigneeEntity $entity) => AssigneeMapper::toDomain($entity),
+            $entities
+        );
+    }
 }

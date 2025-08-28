@@ -82,23 +82,7 @@ class AssigneeController extends AbstractController
             $assignees = $assigneeRepository->findByOrganizationId($organizationId);
         }
 
-        $data = array_map(function ($assignee) {
-            return [
-                'id' => $assignee->getId(),
-                'firstName' => $assignee->getFirstName(),
-                'lastName' => $assignee->getLastName(),
-                'email' => $assignee->getEmail(),
-                'phone' => $assignee->getPhone(),
-                'avatar' => $assignee->getAvatar(),
-                'active' => $assignee->isActive(),
-                'role' => $assignee->getRole(),
-                'department' => $assignee->getDepartment(),
-                'organizationId' => $assignee->getOrganizationId(),
-                'userId' => $assignee->getUserId(),
-                'createdAt' => $assignee->getCreatedAt()->format('Y-m-d H:i:s'),
-                'updatedAt' => $assignee->getUpdatedAt()?->format('Y-m-d H:i:s')
-            ];
-        }, $assignees);
+        $data = array_map([$this, 'transformAssigneeToArray'], $assignees);
 
         return $this->json(['data' => $data]);
     }
@@ -435,21 +419,7 @@ class AssigneeController extends AbstractController
             return $this->json([
                 'success' => true,
                 'message' => 'Assignee created successfully',
-                'data' => [
-                    'id' => $assignee->getId(),
-                    'firstName' => $assignee->getFirstName(),
-                    'lastName' => $assignee->getLastName(),
-                    'email' => $assignee->getEmail(),
-                    'phone' => $assignee->getPhone(),
-                    'avatar' => $assignee->getAvatar(),
-                    'active' => $assignee->isActive(),
-                    'role' => $assignee->getRole(),
-                    'department' => $assignee->getDepartment(),
-                    'organizationId' => $assignee->getOrganizationId(),
-                    'userId' => $assignee->getUserId(),
-                    'createdAt' => $assignee->getCreatedAt()->format('Y-m-d H:i:s'),
-                    'updatedAt' => $assignee->getUpdatedAt()?->format('Y-m-d H:i:s')
-                ]
+                'data' => $this->transformAssigneeToArray($assignee)
             ], 201);
 
         } catch (\Exception $e) {
@@ -458,5 +428,115 @@ class AssigneeController extends AbstractController
                 'message' => 'Failed to create assignee: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    #[Route('/assignees/user/{userId}', name: 'get_assignees_by_user', methods: ['GET'])]
+    #[OA\Get(
+        summary: "Get assignees by user ID",
+        tags: ['Assignees'],
+        parameters: [
+            new OA\Parameter(
+                name: "userId",
+                description: "User ID",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "X-Org-Id",
+                description: "Organization ID",
+                in: "header",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "active",
+                description: "Filter by active status",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "boolean")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "List of assignees for the user",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(
+                            property: "data",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "id", type: "string"),
+                                    new OA\Property(property: "firstName", type: "string"),
+                                    new OA\Property(property: "lastName", type: "string"),
+                                    new OA\Property(property: "email", type: "string"),
+                                    new OA\Property(property: "phone", type: "string", nullable: true),
+                                    new OA\Property(property: "avatar", type: "string"),
+                                    new OA\Property(property: "active", type: "boolean"),
+                                    new OA\Property(property: "role", type: "string"),
+                                    new OA\Property(property: "department", type: "string", nullable: true),
+                                    new OA\Property(property: "organizationId", type: "string"),
+                                    new OA\Property(property: "userId", type: "string"),
+                                    new OA\Property(property: "createdAt", type: "string", format: "date-time"),
+                                    new OA\Property(property: "updatedAt", type: "string", format: "date-time", nullable: true)
+                                ]
+                            )
+                        )
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Missing organization header"),
+            new OA\Response(response: 404, description: "User not found or no assignees found")
+        ]
+    )]
+    public function getAssigneesByUser(
+        string $userId,
+        Request $request,
+        AssigneeRepositoryInterface $assigneeRepository
+    ): JsonResponse {
+        $organizationId = $request->headers->get('X-Org-Id');
+        if (!$organizationId) {
+            return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
+        }
+
+        $activeOnly = $request->query->getBoolean('active', false);
+
+        // Get assignees by user ID
+        $assignees = $assigneeRepository->findByUserId($userId);
+
+        // Filter by organization and active status if needed
+        $filteredAssignees = array_filter($assignees, function ($assignee) use ($organizationId, $activeOnly) {
+            $orgMatch = $assignee->getOrganizationId() === $organizationId;
+            $activeMatch = !$activeOnly || $assignee->isActive();
+            return $orgMatch && $activeMatch;
+        });
+
+        $data = array_map([$this, 'transformAssigneeToArray'], array_values($filteredAssignees));
+
+        return $this->json(['data' => $data]);
+    }
+
+    /**
+     * Transform an Assignee object to array format
+     */
+    private function transformAssigneeToArray(Assignee $assignee): array
+    {
+        return [
+            'id' => $assignee->getId(),
+            'firstName' => $assignee->getFirstName(),
+            'lastName' => $assignee->getLastName(),
+            'email' => $assignee->getEmail(),
+            'phone' => $assignee->getPhone(),
+            'avatar' => $assignee->getAvatar(),
+            'active' => $assignee->isActive(),
+            'role' => $assignee->getRole(),
+            'department' => $assignee->getDepartment(),
+            'organizationId' => $assignee->getOrganizationId(),
+            'userId' => $assignee->getUserId(),
+            'createdAt' => $assignee->getCreatedAt()->format('Y-m-d H:i:s'),
+            'updatedAt' => $assignee->getUpdatedAt()?->format('Y-m-d H:i:s')
+        ];
     }
 }
