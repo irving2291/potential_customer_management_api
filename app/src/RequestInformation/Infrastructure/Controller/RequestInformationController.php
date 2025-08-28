@@ -1066,4 +1066,125 @@ class RequestInformationController extends AbstractController
         ]);
     }
 
+    #[Route('/requests-information/assignee/{assigneeId}/period', name: 'requests_by_assignee_and_period', methods: ['GET'])]
+    #[OA\Get(
+        summary: "Lista peticiones asignadas a un responsable en un período específico",
+        tags: ['RequestInformation'],
+        parameters: [
+            new OA\Parameter(
+                name: "assigneeId",
+                description: "ID del responsable",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "from",
+                description: "Fecha de inicio (YYYY-MM-DD)",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "string", format: "date")
+            ),
+            new OA\Parameter(
+                name: "to",
+                description: "Fecha de fin (YYYY-MM-DD)",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "string", format: "date")
+            ),
+            new OA\Parameter(
+                name: "status",
+                description: "Estado a consultar (opcional)",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "string")
+            ),
+            new OA\Parameter(
+                name: "page",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "integer", default: 1)
+            ),
+            new OA\Parameter(
+                name: "limit",
+                in: "query",
+                required: false,
+                schema: new OA\Schema(type: "integer", default: 10)
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Listado paginado de peticiones por responsable y período",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "data", type: "array", items: new OA\Items(
+                            properties: [
+                                new OA\Property(property: "id", type: "string"),
+                                new OA\Property(property: "firstName", type: "string"),
+                                new OA\Property(property: "lastName", type: "string"),
+                                new OA\Property(property: "email", type: "string"),
+                                new OA\Property(property: "phone", type: "string"),
+                                new OA\Property(property: "city", type: "string"),
+                                new OA\Property(property: "assigneeId", type: "string"),
+                                new OA\Property(property: "createdAt", type: "string"),
+                                new OA\Property(property: "updatedAt", type: "string"),
+                                new OA\Property(property: "status", type: "string"),
+                            ]
+                        )),
+                        new OA\Property(property: "page", type: "integer"),
+                        new OA\Property(property: "limit", type: "integer"),
+                        new OA\Property(property: "count", type: "integer")
+                    ]
+                )
+            )
+        ]
+    )]
+    public function listByAssigneeAndPeriod(
+        string $assigneeId,
+        Request $request,
+        RequestInformationRepositoryInterface $repo
+    ): JsonResponse {
+        $organizationId = $request->headers->get('x-org-id');
+        if (!$organizationId) {
+            return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
+        }
+
+        $from = $request->query->get('from');
+        $to = $request->query->get('to');
+        $status = $request->query->get('status');
+        $page = (int) $request->query->get('page', 1);
+        $limit = (int) $request->query->get('limit', 10);
+
+        $fromDate = $from ? \DateTimeImmutable::createFromFormat('Y-m-d', $from) : null;
+        $toDate = $to ? \DateTimeImmutable::createFromFormat('Y-m-d', $to) : null;
+
+        $result = $repo->findByAssigneeAndDateRange($assigneeId, $organizationId, $fromDate, $toDate, $status, $page, $limit);
+
+        // Mapear los datos a un array limpio para API
+        $data = array_map(function($item) {
+            return [
+                'id' => $item->getId(),
+                'firstName' => $item->getFirstName(),
+                'lastName' => $item->getLastName(),
+                'email' => $item->getEmail()->getValue(),
+                'phone' => $item->getPhone()->getValue(),
+                'city' => $item->getCity(),
+                'assigneeId' => $item->getAssigneeId(),
+                'programInterestId' => $item->getProgramInterestId(),
+                'leadOriginId' => $item->getLeadOriginId(),
+                'createdAt' => $item->getCreatedAt()?->format('Y-m-d H:i:s'),
+                'updatedAt' => $item->getUpdatedAt()?->format('Y-m-d H:i:s'),
+                'status' => $item->getStatus()->getCode(),
+            ];
+        }, $result);
+
+        return $this->json([
+            'data' => $data,
+            'page' => $page,
+            'limit' => $limit,
+            'count' => count($data)
+        ]);
+    }
+
 }

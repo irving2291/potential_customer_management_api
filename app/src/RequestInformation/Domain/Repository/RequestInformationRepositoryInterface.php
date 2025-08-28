@@ -23,4 +23,6 @@ interface RequestInformationRepositoryInterface
     public function countActiveByAssignee(string $assigneeId, string $organizationId): int;
 
     public function findByAssigneeIdAndOrganization(string $assigneeId, string $organizationId, ?string $status = null): array;
+
+    public function findByAssigneeAndDateRange(string $assigneeId, string $organizationId, \DateTimeInterface $from = null, \DateTimeInterface $to = null, ?string $status = null, int $page = 1, int $limit = 10): array;
 }

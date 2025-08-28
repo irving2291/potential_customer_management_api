@@ -208,4 +208,39 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
         
         return array_map([RequestInformationMapper::class, 'toDomain'], $entities);
     }
+
+    public function findByAssigneeAndDateRange(string $assigneeId, string $organizationId, \DateTimeInterface $from = null, \DateTimeInterface $to = null, ?string $status = null, int $page = 1, int $limit = 10): array
+    {
+        $qb = $this->em->createQueryBuilder();
+        $qb->select('r')
+            ->from(DoctrineRequestInformationEntity::class, 'r')
+            ->where('r.assigneeId = :assigneeId')
+            ->andWhere('r.organizationId = :organizationId')
+            ->setParameter('assigneeId', $assigneeId)
+            ->setParameter('organizationId', $organizationId);
+
+        if ($from) {
+            $qb->andWhere('r.createdAt >= :from')
+                ->setParameter('from', $from->format('Y-m-d 00:00:00'));
+        }
+
+        if ($to) {
+            $qb->andWhere('r.createdAt <= :to')
+                ->setParameter('to', $to->format('Y-m-d 23:59:59'));
+        }
+
+        if ($status) {
+            $qb->innerJoin('r.status', 's')
+                ->andWhere('s.code = :status')
+                ->setParameter('status', $status);
+        }
+
+        $qb->orderBy('r.createdAt', 'DESC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+
+        $entities = $qb->getQuery()->getResult();
+
+        return array_map([RequestInformationMapper::class, 'toDomain'], $entities);
+    }
 }
