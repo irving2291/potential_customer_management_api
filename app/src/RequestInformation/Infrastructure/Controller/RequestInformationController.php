@@ -11,12 +11,10 @@ use App\RequestInformation\Application\Command\UpdateRequestNoteCommand;
 use App\RequestInformation\Application\CommandHandler\AddRequestInformationStatusHandler;
 use App\RequestInformation\Application\CommandHandler\AddRequestNoteHandler;
 use App\RequestInformation\Application\CommandHandler\ChangeRequestStatusHandler;
-use App\RequestInformation\Application\CommandHandler\CreateRequestInformationHandler;
 use App\RequestInformation\Application\CommandHandler\DeleteRequestNoteHandler;
 use App\RequestInformation\Application\CommandHandler\ReorderRequestInformationStatusesHandler;
 use App\RequestInformation\Application\CommandHandler\UpdateRequestInformationStatusHandler;
 use App\RequestInformation\Application\Query\GetRequestSummaryQuery;
-use App\RequestInformation\Domain\Entity\RequestInformationStatus;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
 use App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface;
 use App\RequestInformation\Domain\Repository\RequestNoteRepositoryInterface;
@@ -73,7 +71,7 @@ class RequestInformationController extends AbstractController
     )]
     public function create(
         Request $request,
-        CreateRequestInformationHandler $commandBus
+        MessageBusInterface $commandBus
     ): JsonResponse {
         $organizationId = $request->headers->get('x-org-id');
 

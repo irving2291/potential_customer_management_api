@@ -3,6 +3,7 @@ namespace App\RequestInformation\Application\Command;
 
 class CreateRequestInformationCommand
 {
+    public string $type;
     public string $programInterest;
     public string $leadOrigin;
     public string $organization;
@@ -21,6 +22,8 @@ class CreateRequestInformationCommand
         string $email,
         string $phone,
         string $city,
+        string $type = 'person',
+        string $priority = 'medium',
     )
     {
         $this->firstName = $firstName;
@@ -31,5 +34,7 @@ class CreateRequestInformationCommand
         $this->programInterest = $programInterest;
         $this->leadOrigin = $leadOrigin;
         $this->organization = $organization;
+        $this->type = $type;
+        $this->priority = $priority;
     }
 }

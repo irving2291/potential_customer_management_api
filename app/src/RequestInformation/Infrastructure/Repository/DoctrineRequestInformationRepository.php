@@ -150,7 +150,7 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
             ->setMaxResults($limit);
 
         $entities = $qb->getQuery()->getResult();
-        
+
         return array_map([RequestInformationMapper::class, 'toDomain'], $entities);
     }
 
@@ -166,7 +166,7 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
             ->setMaxResults(1);
 
         $entity = $qb->getQuery()->getOneOrNullResult();
-        
+
         return $entity ? RequestInformationMapper::toDomain($entity) : null;
     }
 
@@ -205,7 +205,7 @@ class DoctrineRequestInformationRepository implements RequestInformationReposito
         $qb->orderBy('r.createdAt', 'DESC');
 
         $entities = $qb->getQuery()->getResult();
-        
+
         return array_map([RequestInformationMapper::class, 'toDomain'], $entities);
     }
 

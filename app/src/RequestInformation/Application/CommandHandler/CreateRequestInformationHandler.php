@@ -25,7 +25,7 @@ class CreateRequestInformationHandler
         private PotentialCustomerRepositoryInterface      $customerRepo,
         private RequestInformationRepositoryInterface     $requestInfoRepo,
         private RequestInformationStatusRepositoryInterface $statusRepo,
-        private EventPublisher                             $eventsPublisher, // 👈 inyectamos el puerto
+        private EventPublisher                             $eventsPublisher,
         private AssignmentService                          $assignmentService,
     ) {}
 
@@ -39,11 +39,17 @@ class CreateRequestInformationHandler
             if (!$potentialCustomer) {
                 $potentialCustomer = new PotentialCustomer(
                     uuid_create(UUID_TYPE_RANDOM),
-                    $command->firstName,
-                    $command->lastName,
+                    $command->type,
+                    $command->organization,
                     [new EmailEntity($command->email)],
                     $command->phone,
-                    $command->city
+                    $command->priority,
+                    $command->firstName,
+                    $command->lastName,
+                    null,
+                    $command->city,
+                    null,
+                    null,
                 );
                 $this->customerRepo->save($potentialCustomer);
             } elseif (!$potentialCustomer->hasEmail($command->email)) {
@@ -117,7 +123,7 @@ class CreateRequestInformationHandler
             );
 
             // Publica a través del puerto (tu adaptador hará POST /events con X-Tenant-Id y X-Trace-Id)
-            $this->eventsPublisher->publish($event);
+            // $this->eventsPublisher->publish($event);
 
         } catch (\DomainException $exception) {
             // No reintentar: error de negocio
