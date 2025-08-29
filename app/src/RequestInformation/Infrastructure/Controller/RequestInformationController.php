@@ -27,9 +27,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
 use App\RequestInformation\Application\Command\CreateRequestInformationCommand;
-use App\RequestInformation\Application\Command\CreateAssignmentRuleCommand;
-use App\RequestInformation\Application\CommandHandler\CreateAssignmentRuleHandler;
-use App\RequestInformation\Domain\Repository\AssignmentRuleRepositoryInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Routing\Requirement\Requirement;
 
@@ -94,7 +91,7 @@ class RequestInformationController extends AbstractController
             $data['phone'],
             $data['city']
         );
-        $commandBus->__invoke($command);
+        $commandBus->dispatch($command);
 
         return $this->json(['status' => 'ok']);
     }
