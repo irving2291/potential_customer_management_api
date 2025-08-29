@@ -92,7 +92,7 @@ class RequestInformationController extends AbstractController
             $data['phone'],
             $data['city']
         );
-        $commandBus->dispatch($command);
+        $commandBus->__invoke($command);
 
         return $this->json(['status' => 'ok']);
     }
