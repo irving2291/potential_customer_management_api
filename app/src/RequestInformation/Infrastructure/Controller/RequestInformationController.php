@@ -11,7 +11,6 @@ use App\RequestInformation\Application\Command\UpdateRequestNoteCommand;
 use App\RequestInformation\Application\CommandHandler\AddRequestInformationStatusHandler;
 use App\RequestInformation\Application\CommandHandler\AddRequestNoteHandler;
 use App\RequestInformation\Application\CommandHandler\ChangeRequestStatusHandler;
-use App\RequestInformation\Application\CommandHandler\CreateRequestInformationHandler;
 use App\RequestInformation\Application\CommandHandler\DeleteRequestNoteHandler;
 use App\RequestInformation\Application\CommandHandler\ReorderRequestInformationStatusesHandler;
 use App\RequestInformation\Application\CommandHandler\UpdateRequestInformationStatusHandler;
@@ -69,7 +68,7 @@ class RequestInformationController extends AbstractController
     )]
     public function create(
         Request $request,
-        CreateRequestInformationHandler $commandBus
+        MessageBusInterface $commandBus
     ): JsonResponse {
         $organizationId = $request->headers->get('x-org-id');
 
@@ -92,7 +91,7 @@ class RequestInformationController extends AbstractController
             $data['phone'],
             $data['city']
         );
-        $commandBus->__invoke($command);
+        $commandBus->dispatch($command);
 
         return $this->json(['status' => 'ok']);
     }
