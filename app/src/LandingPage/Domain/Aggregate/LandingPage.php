@@ -166,8 +166,20 @@ class LandingPage
         if ($templateService === null) {
             $templateService = new HtmlTemplateService();
         }
-        
-        return $templateService->processTemplate($this->htmlContent, $this->variables);
+
+        // Convert variables to associative array format expected by processTemplate
+        $processedVariables = [];
+        foreach ($this->variables as $key => $value) {
+            if (is_array($value) && isset($value['key'], $value['value'])) {
+                // Handle nested format: [['key' => 'name', 'value' => 'John'], ...]
+                $processedVariables[$value['key']] = $value['value'];
+            } elseif (is_string($key)) {
+                // Handle associative format: ['name' => 'John', ...]
+                $processedVariables[$key] = $value;
+            }
+        }
+
+        return $templateService->processTemplate($this->htmlContent, $processedVariables);
     }
 
     public function getTemplatePreview(HtmlTemplateService $templateService = null): array
@@ -175,8 +187,20 @@ class LandingPage
         if ($templateService === null) {
             $templateService = new HtmlTemplateService();
         }
-        
-        return $templateService->getPreview($this->htmlContent, $this->variables);
+
+        // Convert variables to associative array format expected by getPreview
+        $processedVariables = [];
+        foreach ($this->variables as $key => $value) {
+            if (is_array($value) && isset($value['key'], $value['value'])) {
+                // Handle nested format: [['key' => 'name', 'value' => 'John'], ...]
+                $processedVariables[$value['key']] = $value['value'];
+            } elseif (is_string($key)) {
+                // Handle associative format: ['name' => 'John', ...]
+                $processedVariables[$key] = $value;
+            }
+        }
+
+        return $templateService->getPreview($this->htmlContent, $processedVariables);
     }
 
     public function getExtractedVariables(HtmlTemplateService $templateService = null): array
