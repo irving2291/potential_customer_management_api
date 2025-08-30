@@ -22,6 +22,8 @@ class RequestInformation
 
     private \DateTimeImmutable $updatedAt;
 
+    private \DateTimeImmutable $createdAt;
+
     public function __construct(
         ?string $id,
         string $programInterestId,
@@ -106,6 +108,11 @@ class RequestInformation
         return $this->updatedAt ?? null;
     }
 
+    public function getCreatedAt(): ?\DateTimeImmutable
+    {
+        return $this->createdAt ?? null;
+    }
+
     // --- SETTERS (opcionales, usa con precaución en DDD) ---
 
     public function setStatus(RequestInformationStatus $status): void { $this->status = $status; }
@@ -180,6 +187,12 @@ class RequestInformation
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): self
     {
         $this->updatedAt = $updatedAt;
+        return $this;
+    }
+
+    public function setCreatedAt(\DateTimeImmutable $createdAt): self
+    {
+        $this->createdAt = $createdAt;
         return $this;
     }
 }
