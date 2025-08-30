@@ -2,7 +2,9 @@
 
 namespace App\RequestInformation\Application\CommandHandler;
 
+use App\Common\Infrastructure\EventPublisher;
 use App\RequestInformation\Application\Command\ChangeRequestStatusCommand;
+use App\RequestInformation\Domain\Events\RequestStatusChanged;
 use App\RequestInformation\Domain\Repository\RequestInformationRepositoryInterface;
 use App\RequestInformation\Domain\Repository\RequestInformationStatusRepositoryInterface; // <-- Nuevo: interface para el repo de status
 use DomainException;
@@ -14,7 +16,8 @@ class ChangeRequestStatusHandler
 {
     public function __construct(
         private RequestInformationRepositoryInterface $repo,
-        private RequestInformationStatusRepositoryInterface $statusRepo
+        private RequestInformationStatusRepositoryInterface $statusRepo,
+        private EventPublisher $eventsPublisher,
     ) {}
 
     #[NoReturn]
@@ -35,5 +38,17 @@ class ChangeRequestStatusHandler
         $requestInfo->setUpdatedAt(new \DateTimeImmutable());
 
         $this->repo->save($requestInfo);
+
+        $actorId = \property_exists($command, 'actorId') && $command->actorId ? (string)$command->actorId : 'system';
+        $actorUsername = \property_exists($command, 'actorUsername') && $command->actorUsername ? (string)$command->actorUsername : 'system';
+
+        $event = new RequestStatusChanged(
+            organizationId: $requestInfo->getOrganizationId(),
+            requestId:      (string)($requestInfo->getId() ?? $requestInfo->id()), // depende de tus getters
+            actorId:        $actorId,
+            actorUsername:  $actorUsername,
+            payload: (array)$newStatus,
+        );
+        $this->eventsPublisher->publish($event);
     }
 }

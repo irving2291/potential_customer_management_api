@@ -144,7 +144,6 @@ class LandingPageController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        
         if (!$data || !isset($data['title'], $data['slug'], $data['htmlContent'])) {
             return $this->json(['error' => true, 'message' => 'Missing required fields'], 400);
         }
@@ -156,7 +155,8 @@ class LandingPageController extends AbstractController
         }
 
         // Validate variable names
-        foreach (array_keys($variables) as $varName) {
+        foreach ($variables as $variable) {
+            $varName = $variable['key'];
             if (!$this->templateService->validateVariableName($varName)) {
                 return $this->json(['error' => true, 'message' => "Invalid variable name: $varName"], 400);
             }
@@ -221,7 +221,7 @@ class LandingPageController extends AbstractController
     public function getLandingPage(string $id): JsonResponse
     {
         $landingPage = $this->landingPageRepository->findById($id);
-        
+
         if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
@@ -262,7 +262,7 @@ class LandingPageController extends AbstractController
     public function getLandingPageBySlug(string $slug): JsonResponse
     {
         $landingPage = $this->landingPageRepository->findBySlug($slug);
-        
+
         if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
@@ -300,27 +300,28 @@ class LandingPageController extends AbstractController
     public function updateLandingPage(string $id, Request $request): JsonResponse
     {
         $landingPage = $this->landingPageRepository->findById($id);
-        
+
         if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
 
         $data = json_decode($request->getContent(), true);
-        
+
         // Validate variables if provided
         if (isset($data['variables'])) {
             if (!is_array($data['variables'])) {
                 return $this->json(['error' => true, 'message' => 'Variables must be an object'], 400);
             }
-            
+
             // Validate variable names
-            foreach (array_keys($data['variables']) as $varName) {
+            foreach ($data['variables'] as $variable) {
+                $varName = $variable['key'];
                 if (!$this->templateService->validateVariableName($varName)) {
                     return $this->json(['error' => true, 'message' => "Invalid variable name: $varName"], 400);
                 }
             }
         }
-        
+
         // Update content if provided
         if (isset($data['title']) || isset($data['slug']) || isset($data['htmlContent']) ||
             isset($data['hasContactForm']) || isset($data['contactFormConfig']) || isset($data['variables'])) {
@@ -382,7 +383,7 @@ class LandingPageController extends AbstractController
     public function deleteLandingPage(string $id): JsonResponse
     {
         $landingPage = $this->landingPageRepository->findById($id);
-        
+
         if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
@@ -432,7 +433,7 @@ class LandingPageController extends AbstractController
         MessageBusInterface $commandBus
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data || !isset($data['firstName'], $data['lastName'], $data['email'], $data['message'])) {
             return $this->json(['error' => true, 'message' => 'Missing required fields'], 400);
         }
@@ -459,7 +460,7 @@ class LandingPageController extends AbstractController
                 $data['phone'] ?? '',
                 $data['city'] ?? 'No especificada'
             );
-            
+
             $commandBus->dispatch($command);
 
             return $this->json([
@@ -505,7 +506,7 @@ class LandingPageController extends AbstractController
     public function getLandingPageVariables(string $id): JsonResponse
     {
         $landingPage = $this->landingPageRepository->findById($id);
-        
+
         if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
@@ -552,19 +553,20 @@ class LandingPageController extends AbstractController
     public function updateLandingPageVariables(string $id, Request $request): JsonResponse
     {
         $landingPage = $this->landingPageRepository->findById($id);
-        
+
         if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
 
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data || !isset($data['variables']) || !is_array($data['variables'])) {
             return $this->json(['error' => true, 'message' => 'Variables must be provided as an object'], 400);
         }
 
         // Validate variable names
-        foreach (array_keys($data['variables']) as $varName) {
+        foreach ($data['variables'] as $variable) {
+            $varName = $variable['key'];
             if (!$this->templateService->validateVariableName($varName)) {
                 return $this->json(['error' => true, 'message' => "Invalid variable name: $varName"], 400);
             }
@@ -618,7 +620,7 @@ class LandingPageController extends AbstractController
     public function addLandingPageVariable(string $id, string $varName, Request $request): JsonResponse
     {
         $landingPage = $this->landingPageRepository->findById($id);
-        
+
         if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
@@ -628,7 +630,7 @@ class LandingPageController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data || !isset($data['value'])) {
             return $this->json(['error' => true, 'message' => 'Variable value is required'], 400);
         }
@@ -671,7 +673,7 @@ class LandingPageController extends AbstractController
     public function deleteLandingPageVariable(string $id, string $varName): JsonResponse
     {
         $landingPage = $this->landingPageRepository->findById($id);
-        
+
         if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }
@@ -716,7 +718,7 @@ class LandingPageController extends AbstractController
     public function previewLandingPage(string $id): JsonResponse
     {
         $landingPage = $this->landingPageRepository->findById($id);
-        
+
         if (!$landingPage) {
             return $this->json(['error' => true, 'message' => 'Landing page not found'], 404);
         }

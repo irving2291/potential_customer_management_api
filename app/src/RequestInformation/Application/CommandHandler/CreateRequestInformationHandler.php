@@ -123,7 +123,7 @@ class CreateRequestInformationHandler
             );
 
             // Publica a través del puerto (tu adaptador hará POST /events con X-Tenant-Id y X-Trace-Id)
-            // $this->eventsPublisher->publish($event);
+            $this->eventsPublisher->publish($event);
 
         } catch (\DomainException $exception) {
             // No reintentar: error de negocio
