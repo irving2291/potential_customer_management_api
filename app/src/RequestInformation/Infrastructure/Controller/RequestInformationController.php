@@ -1171,7 +1171,7 @@ class RequestInformationController extends AbstractController
                 'leadOriginId' => $item->getLeadOriginId(),
                 'createdAt' => $item->getCreatedAt()?->format('Y-m-d H:i:s'),
                 'updatedAt' => $item->getUpdatedAt()?->format('Y-m-d H:i:s'),
-                'status' => $item->getStatus()->getCode(),
+                'status' => $item->getStatus(),
             ];
         }, $result);
 
