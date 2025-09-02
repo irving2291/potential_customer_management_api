@@ -235,6 +235,81 @@ class RequestInformationController extends AbstractController
         ]);
     }
 
+    #[Route('/requests-information/{id}', name: 'get_request_information', methods: ['GET'])]
+    #[OA\Get(
+        summary: "Obtener una petición de información por ID",
+        tags: ['RequestInformation'],
+        parameters: [
+            new OA\Parameter(
+                name: "id",
+                description: "ID de la petición de información",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Petición encontrada",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "id", type: "string"),
+                        new OA\Property(property: "firstName", type: "string"),
+                        new OA\Property(property: "lastName", type: "string"),
+                        new OA\Property(property: "email", type: "string"),
+                        new OA\Property(property: "phone", type: "string"),
+                        new OA\Property(property: "city", type: "string"),
+                        new OA\Property(property: "programInterestId", type: "string"),
+                        new OA\Property(property: "leadOriginId", type: "string"),
+                        new OA\Property(property: "assigneeId", type: "string", nullable: true),
+                        new OA\Property(property: "createdAt", type: "string", format: "date-time"),
+                        new OA\Property(property: "updatedAt", type: "string", format: "date-time", nullable: true),
+                        new OA\Property(property: "status", type: "string"),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 404,
+                description: "Petición no encontrada",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "error", type: "boolean", example: true),
+                        new OA\Property(property: "message", type: "string", example: "Request not found")
+                    ]
+                )
+            )
+        ]
+    )]
+    public function getById(
+        string $id,
+        RequestInformationRepositoryInterface $repo
+    ): JsonResponse {
+        $request = $repo->findById($id);
+
+        if (!$request) {
+            return $this->json(['error' => true, 'message' => 'Request not found'], 404);
+        }
+
+        // Mapear los datos a un array limpio para API
+        $data = [
+            'id' => $request->getId(),
+            'firstName' => $request->getFirstName(),
+            'lastName' => $request->getLastName(),
+            'email' => $request->getEmail()->getValue(),
+            'phone' => $request->getPhone()->getValue(),
+            'city' => $request->getCity(),
+            'programInterestId' => $request->getProgramInterestId(),
+            'leadOriginId' => $request->getLeadOriginId(),
+            'assigneeId' => $request->getAssigneeId(),
+            'createdAt' => $request->getCreatedAt()?->format('Y-m-d H:i:s'),
+            'updatedAt' => $request->getUpdatedAt()?->format('Y-m-d H:i:s'),
+            'status' => $request->getStatus()->getCode(),
+        ];
+
+        return $this->json($data);
+    }
+
     #[Route('/requests-information/by-assignee/{assigneeId}', name: 'requests_by_assignee', methods: ['GET'])]
     #[OA\Get(
         summary: "Lista peticiones asignadas a un responsable específico",
