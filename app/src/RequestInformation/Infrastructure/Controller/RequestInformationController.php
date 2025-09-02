@@ -628,7 +628,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/requests-information/status', name: 'list_request_status', methods: ['GET'])]
+    #[Route('/requests-information-status', name: 'list_request_status', methods: ['GET'])]
     #[OA\Get(
         summary: "Obtener todos los estados disponibles",
         tags: ['RequestStatus'],
