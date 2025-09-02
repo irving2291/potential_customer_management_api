@@ -23,7 +23,7 @@ class RequestStatusChanged implements DomainEvent
 
     public function tenantId(): ?string { return $this->organizationId; }
 
-    public function entityId(): string { return 'request_information_status_'.$this->requestId; }
+    public function entityId(): string { return 'request_information_'.$this->requestId; }
 
     public function actorId(): ?string { return $this->actorId; }
 
