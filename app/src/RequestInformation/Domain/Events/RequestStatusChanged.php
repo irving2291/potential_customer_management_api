@@ -15,7 +15,7 @@ class RequestStatusChanged implements DomainEvent
         private ?\DateTimeImmutable $when = null,
     ) {}
 
-    public function eventType(): string { return 'request_information_status.created'; }
+    public function eventType(): string { return 'request_information_status.changed'; }
 
     public function occurredOn(): \DateTimeImmutable { return $this->when ?? new \DateTimeImmutable(); }
 
