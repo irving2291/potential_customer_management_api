@@ -2,8 +2,12 @@
 
 namespace App\Activation\Infrastructure\Controller;
 
-use App\Activation\Domain\Aggregate\Activation;
-use App\Activation\Domain\Repository\ActivationRepositoryInterface;
+use App\Activation\Application\UseCase\ListActivationsUseCase;
+use App\Activation\Application\UseCase\GetActivationUseCase;
+use App\Activation\Application\UseCase\CreateActivationUseCase;
+use App\Activation\Application\UseCase\UpdateActivationUseCase;
+use App\Activation\Application\UseCase\DeleteActivationUseCase;
+use App\Activation\Application\UseCase\ChangeActivationStatusUseCase;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,6 +16,28 @@ use OpenApi\Attributes as OA;
 
 class ActivationController extends AbstractController
 {
+    private ListActivationsUseCase $listActivationsUseCase;
+    private GetActivationUseCase $getActivationUseCase;
+    private CreateActivationUseCase $createActivationUseCase;
+    private UpdateActivationUseCase $updateActivationUseCase;
+    private DeleteActivationUseCase $deleteActivationUseCase;
+    private ChangeActivationStatusUseCase $changeActivationStatusUseCase;
+
+    public function __construct(
+        ListActivationsUseCase $listActivationsUseCase,
+        GetActivationUseCase $getActivationUseCase,
+        CreateActivationUseCase $createActivationUseCase,
+        UpdateActivationUseCase $updateActivationUseCase,
+        DeleteActivationUseCase $deleteActivationUseCase,
+        ChangeActivationStatusUseCase $changeActivationStatusUseCase
+    ) {
+        $this->listActivationsUseCase = $listActivationsUseCase;
+        $this->getActivationUseCase = $getActivationUseCase;
+        $this->createActivationUseCase = $createActivationUseCase;
+        $this->updateActivationUseCase = $updateActivationUseCase;
+        $this->deleteActivationUseCase = $deleteActivationUseCase;
+        $this->changeActivationStatusUseCase = $changeActivationStatusUseCase;
+    }
     #[Route('/activations', name: 'list_activations', methods: ['GET'])]
     #[OA\Get(
         summary: "List all activations by organization",
@@ -94,10 +120,8 @@ class ActivationController extends AbstractController
             )
         ]
     )]
-    public function listActivations(
-        Request $request,
-        ActivationRepositoryInterface $activationRepository
-    ): JsonResponse {
+    public function listActivations(Request $request): JsonResponse
+    {
         $organizationId = $request->headers->get('X-Org-Id');
         if (!$organizationId) {
             return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
@@ -109,64 +133,16 @@ class ActivationController extends AbstractController
         $type = $request->query->get('type');
         $search = $request->query->get('search');
 
-        // Mock data for now - replace with actual repository call
-        $mockActivations = [
-            [
-                'id' => '1',
-                'title' => 'Promoción Black Friday',
-                'description' => 'Descuentos especiales del 50% en todos nuestros servicios durante el Black Friday',
-                'type' => 'promotion',
-                'status' => 'scheduled',
-                'priority' => 'high',
-                'channels' => ['email', 'sms', 'whatsapp'],
-                'targetAudience' => 'Clientes activos',
-                'scheduledFor' => '2024-11-29T09:00:00Z',
-                'createdBy' => 'user1',
-                'createdAt' => '2024-11-15T10:00:00Z',
-                'updatedAt' => null
-            ],
-            [
-                'id' => '2',
-                'title' => 'Encuesta de Satisfacción',
-                'description' => 'Queremos conocer tu opinión sobre nuestros servicios',
-                'type' => 'survey',
-                'status' => 'active',
-                'priority' => 'medium',
-                'channels' => ['email'],
-                'targetAudience' => 'Clientes con servicios completados',
-                'scheduledFor' => null,
-                'createdBy' => 'user2',
-                'createdAt' => '2024-11-10T14:30:00Z',
-                'updatedAt' => '2024-11-12T09:15:00Z'
-            ]
-        ];
+        $result = $this->listActivationsUseCase->execute(
+            $organizationId,
+            $page,
+            $perPage,
+            $status,
+            $type,
+            $search
+        );
 
-        // Apply filters
-        $filteredActivations = $mockActivations;
-        if ($status) {
-            $filteredActivations = array_filter($filteredActivations, fn($a) => $a['status'] === $status);
-        }
-        if ($type) {
-            $filteredActivations = array_filter($filteredActivations, fn($a) => $a['type'] === $type);
-        }
-        if ($search) {
-            $search = strtolower($search);
-            $filteredActivations = array_filter($filteredActivations, fn($a) => 
-                str_contains(strtolower($a['title']), $search) || 
-                str_contains(strtolower($a['description']), $search)
-            );
-        }
-
-        $total = count($filteredActivations);
-        $offset = ($page - 1) * $perPage;
-        $paginatedActivations = array_slice($filteredActivations, $offset, $perPage);
-
-        return $this->json([
-            'data' => array_values($paginatedActivations),
-            'total' => $total,
-            'page' => $page,
-            'perPage' => $perPage
-        ]);
+        return $this->json($result);
     }
 
     #[Route('/activations', name: 'create_activation', methods: ['POST'])]
@@ -193,41 +169,36 @@ class ActivationController extends AbstractController
             new OA\Response(response: 400, description: "Invalid request data")
         ]
     )]
-    public function createActivation(
-        Request $request,
-        ActivationRepositoryInterface $activationRepository
-    ): JsonResponse {
+    public function createActivation(Request $request): JsonResponse
+    {
         $organizationId = $request->headers->get('X-Org-Id');
         if (!$organizationId) {
             return $this->json(['error' => true, 'message' => 'Organization header missing'], 400);
         }
 
         $data = json_decode($request->getContent(), true);
-        
+
         if (!$data || !isset($data['title'], $data['description'], $data['type'], $data['priority'], $data['channels'])) {
             return $this->json(['error' => true, 'message' => 'Missing required fields'], 400);
         }
 
-        // Mock creation - in real implementation, create and save the activation
-        $activationId = uniqid();
-        $scheduledFor = isset($data['scheduledFor']) ? new \DateTimeImmutable($data['scheduledFor']) : null;
+        try {
+            $result = $this->createActivationUseCase->execute(
+                $organizationId,
+                $data['title'],
+                $data['description'],
+                $data['type'],
+                $data['priority'],
+                $data['channels'],
+                'current-user', // Should come from authentication
+                $data['targetAudience'] ?? null,
+                $data['scheduledFor'] ?? null
+            );
 
-        $mockActivation = [
-            'id' => $activationId,
-            'title' => $data['title'],
-            'description' => $data['description'],
-            'type' => $data['type'],
-            'status' => 'draft',
-            'priority' => $data['priority'],
-            'channels' => $data['channels'],
-            'targetAudience' => $data['targetAudience'] ?? null,
-            'scheduledFor' => $scheduledFor?->format('Y-m-d\TH:i:s\Z'),
-            'createdBy' => 'current-user', // Should come from authentication
-            'createdAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:s\Z'),
-            'updatedAt' => null
-        ];
-
-        return $this->json($mockActivation, 201);
+            return $this->json($result, 201);
+        } catch (\Exception $e) {
+            return $this->json(['error' => true, 'message' => $e->getMessage()], 400);
+        }
     }
 
     #[Route('/activations/{id}', name: 'get_activation', methods: ['GET'])]
@@ -248,29 +219,15 @@ class ActivationController extends AbstractController
             new OA\Response(response: 404, description: "Activation not found")
         ]
     )]
-    public function getActivation(
-        string $id,
-        ActivationRepositoryInterface $activationRepository
-    ): JsonResponse {
-        // Mock data - replace with actual repository call
-        if ($id === '1') {
-            return $this->json([
-                'id' => '1',
-                'title' => 'Promoción Black Friday',
-                'description' => 'Descuentos especiales del 50% en todos nuestros servicios durante el Black Friday',
-                'type' => 'promotion',
-                'status' => 'scheduled',
-                'priority' => 'high',
-                'channels' => ['email', 'sms', 'whatsapp'],
-                'targetAudience' => 'Clientes activos',
-                'scheduledFor' => '2024-11-29T09:00:00Z',
-                'createdBy' => 'user1',
-                'createdAt' => '2024-11-15T10:00:00Z',
-                'updatedAt' => null
-            ]);
+    public function getActivation(string $id): JsonResponse
+    {
+        $activation = $this->getActivationUseCase->execute($id);
+
+        if (!$activation) {
+            return $this->json(['error' => true, 'message' => 'Activation not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Activation not found'], 404);
+        return $this->json($activation);
     }
 
     #[Route('/activations/{id}', name: 'update_activation', methods: ['PUT'])]
@@ -305,32 +262,26 @@ class ActivationController extends AbstractController
             new OA\Response(response: 404, description: "Activation not found")
         ]
     )]
-    public function updateActivation(
-        string $id,
-        Request $request,
-        ActivationRepositoryInterface $activationRepository
-    ): JsonResponse {
+    public function updateActivation(string $id, Request $request): JsonResponse
+    {
         $data = json_decode($request->getContent(), true);
-        
-        // Mock update - in real implementation, find and update the activation
-        if ($id === '1') {
-            return $this->json([
-                'id' => $id,
-                'title' => $data['title'] ?? 'Promoción Black Friday',
-                'description' => $data['description'] ?? 'Descuentos especiales del 50% en todos nuestros servicios durante el Black Friday',
-                'type' => $data['type'] ?? 'promotion',
-                'status' => 'draft', // Status doesn't change with regular update
-                'priority' => $data['priority'] ?? 'high',
-                'channels' => $data['channels'] ?? ['email', 'sms', 'whatsapp'],
-                'targetAudience' => $data['targetAudience'] ?? 'Clientes activos',
-                'scheduledFor' => $data['scheduledFor'] ?? '2024-11-29T09:00:00Z',
-                'createdBy' => 'user1',
-                'createdAt' => '2024-11-15T10:00:00Z',
-                'updatedAt' => (new \DateTimeImmutable())->format('Y-m-d\TH:i:s\Z')
-            ]);
+
+        $activation = $this->updateActivationUseCase->execute(
+            $id,
+            $data['title'] ?? '',
+            $data['description'] ?? '',
+            $data['type'] ?? '',
+            $data['priority'] ?? '',
+            $data['channels'] ?? [],
+            $data['targetAudience'] ?? null,
+            $data['scheduledFor'] ?? null
+        );
+
+        if (!$activation) {
+            return $this->json(['error' => true, 'message' => 'Activation not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Activation not found'], 404);
+        return $this->json($activation);
     }
 
     #[Route('/activations/{id}/status', name: 'change_activation_status', methods: ['PATCH'])]
@@ -362,11 +313,8 @@ class ActivationController extends AbstractController
             new OA\Response(response: 404, description: "Activation not found")
         ]
     )]
-    public function changeActivationStatus(
-        string $id,
-        Request $request,
-        ActivationRepositoryInterface $activationRepository
-    ): JsonResponse {
+    public function changeActivationStatus(string $id, Request $request): JsonResponse
+    {
         $data = json_decode($request->getContent(), true);
         $newStatus = $data['status'] ?? null;
 
@@ -374,16 +322,23 @@ class ActivationController extends AbstractController
             return $this->json(['error' => true, 'message' => 'Status is required'], 400);
         }
 
-        // Mock status change - in real implementation, find activation and change status
-        if ($id === '1') {
-            return $this->json([
-                'success' => true,
-                'message' => 'Activation status changed successfully',
-                'newStatus' => $newStatus
-            ]);
-        }
+        try {
+            $result = $this->changeActivationStatusUseCase->execute(
+                $id,
+                $newStatus,
+                $data['scheduledFor'] ?? null
+            );
 
-        return $this->json(['error' => true, 'message' => 'Activation not found'], 404);
+            if (!$result) {
+                return $this->json(['error' => true, 'message' => 'Activation not found'], 404);
+            }
+
+            return $this->json($result);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => true, 'message' => $e->getMessage()], 400);
+        } catch (\DomainException $e) {
+            return $this->json(['error' => true, 'message' => $e->getMessage()], 400);
+        }
     }
 
     #[Route('/activations/{id}', name: 'delete_activation', methods: ['DELETE'])]
@@ -404,15 +359,14 @@ class ActivationController extends AbstractController
             new OA\Response(response: 404, description: "Activation not found")
         ]
     )]
-    public function deleteActivation(
-        string $id,
-        ActivationRepositoryInterface $activationRepository
-    ): JsonResponse {
-        // Mock deletion - in real implementation, find and delete the activation
-        if ($id === '1') {
-            return $this->json(['success' => true, 'message' => 'Activation deleted successfully']);
+    public function deleteActivation(string $id): JsonResponse
+    {
+        $deleted = $this->deleteActivationUseCase->execute($id);
+
+        if (!$deleted) {
+            return $this->json(['error' => true, 'message' => 'Activation not found'], 404);
         }
 
-        return $this->json(['error' => true, 'message' => 'Activation not found'], 404);
+        return $this->json(['success' => true, 'message' => 'Activation deleted successfully']);
     }
 }

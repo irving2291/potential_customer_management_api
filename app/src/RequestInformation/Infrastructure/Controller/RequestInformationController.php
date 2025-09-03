@@ -99,7 +99,7 @@ class RequestInformationController extends AbstractController
     /**
      * @throws ExceptionInterface
      */
-    #[Route('/requests-information/summary', name: 'requests_information_summary', methods: ['GET'])]
+    #[Route('/requests-information-summary', name: 'requests_information_summary', methods: ['GET'])]
     #[OA\Get(
         summary: "Summary of requests by state in a date range",
         tags: ['RequestInformation'],
@@ -310,7 +310,7 @@ class RequestInformationController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('/requests-information/by-assignee/{assigneeId}', name: 'requests_by_assignee', methods: ['GET'])]
+    #[Route('/requests-information-by-assignee/{assigneeId}', name: 'requests_by_assignee', methods: ['GET'])]
     #[OA\Get(
         summary: "Lista peticiones asignadas a un responsable específico",
         tags: ['RequestInformation'],
@@ -544,7 +544,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['notes' => $result]);
     }
 
-    #[Route('/requests-information/notes/{noteId}', name: 'update_request_note', methods: ['PATCH'])]
+    #[Route('/requests-information-notes/{noteId}', name: 'update_request_note', methods: ['PATCH'])]
     #[OA\Patch(
         description: "Update the text and set updatedAt for a note.",
         summary: "Update the content of a note",
@@ -593,7 +593,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/requests-information/notes/{noteId}', name: 'delete_request_note', methods: ['DELETE'])]
+    #[Route('/requests-information-notes/{noteId}', name: 'delete_request_note', methods: ['DELETE'])]
     #[OA\Delete(
         description: "Mark a note as deleted (soft delete, sets deletedAt).",
         summary: "Soft delete a note",
@@ -670,7 +670,7 @@ class RequestInformationController extends AbstractController
     }
 
 
-    #[Route('/requests-information/status', name: 'create_request_status', methods: ['POST'])]
+    #[Route('/requests-information-status', name: 'create_request_status', methods: ['POST'])]
     #[OA\Post(
         summary: "Crear un nuevo estado",
         requestBody: new OA\RequestBody(
@@ -707,7 +707,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true], 201);
     }
 
-    #[Route('/requests-information/status/{id}', name: 'update_request_status', requirements: ['id' => Requirement::UUID], methods: ['PATCH'])]
+    #[Route('/requests-information-status/{id}', name: 'update_request_status', requirements: ['id' => Requirement::UUID], methods: ['PATCH'])]
     #[OA\Patch(
         summary: "Actualizar un estado (code, name o sort)",
         requestBody: new OA\RequestBody(
@@ -766,7 +766,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/requests-information/status/reorder', name: 'reorder_request_status', methods: ['PATCH'])]
+    #[Route('/requests-information-status/reorder', name: 'reorder_request_status', methods: ['PATCH'])]
     #[OA\Patch(
         summary: "Reordenar estados por drag & drop (bulk sort update)",
         requestBody: new OA\RequestBody(
@@ -832,7 +832,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['success' => true]);
     }
 
-    #[Route('/requests-information/assignment-rules', name: 'list_assignment_rules', methods: ['GET'])]
+    #[Route('/requests-information-assignment-rules', name: 'list_assignment_rules', methods: ['GET'])]
     #[OA\Get(
         summary: "Get all assignment rules for the organization",
         tags: ['AssignmentRules'],
@@ -918,7 +918,7 @@ class RequestInformationController extends AbstractController
         return $this->json(['data' => $mockRules]);
     }
 
-    #[Route('/requests-information/assignment-rules', name: 'create_assignment_rule', methods: ['POST'])]
+    #[Route('/requests-information-assignment-rules', name: 'create_assignment_rule', methods: ['POST'])]
     #[OA\Post(
         summary: "Create a new assignment rule",
         requestBody: new OA\RequestBody(
@@ -1002,7 +1002,7 @@ class RequestInformationController extends AbstractController
         return $this->json($newRule, 201);
     }
 
-    #[Route('/requests-information/assignment-rules/{id}', name: 'update_assignment_rule', methods: ['PATCH'])]
+    #[Route('/requests-information-assignment-rules/{id}', name: 'update_assignment_rule', methods: ['PATCH'])]
     #[OA\Patch(
         summary: "Update an assignment rule",
         requestBody: new OA\RequestBody(
@@ -1088,7 +1088,7 @@ class RequestInformationController extends AbstractController
         return $this->json($updatedRule);
     }
 
-    #[Route('/requests-information/assignment-rules/{id}', name: 'delete_assignment_rule', methods: ['DELETE'])]
+    #[Route('/requests-information-assignment-rules/{id}', name: 'delete_assignment_rule', methods: ['DELETE'])]
     #[OA\Delete(
         summary: "Delete an assignment rule",
         tags: ['AssignmentRules'],
@@ -1137,7 +1137,7 @@ class RequestInformationController extends AbstractController
         ]);
     }
 
-    #[Route('/requests-information/assignee/{assigneeId}/period', name: 'requests_by_assignee_and_period', methods: ['GET'])]
+    #[Route('/requests-information-assignee/{assigneeId}/period', name: 'requests_by_assignee_and_period', methods: ['GET'])]
     #[OA\Get(
         summary: "Lista peticiones asignadas a un responsable en un período específico",
         tags: ['RequestInformation'],
